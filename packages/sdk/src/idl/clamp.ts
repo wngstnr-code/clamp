@@ -14,6 +14,159 @@ export type Clamp = {
   },
   "instructions": [
     {
+      "name": "buy",
+      "docs": [
+        "Buys claims of one side through the pool."
+      ],
+      "discriminator": [
+        102,
+        6,
+        61,
+        18,
+        1,
+        218,
+        235,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "idle",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "tokens",
+          "accounts": [
+            {
+              "name": "series",
+              "writable": true
+            },
+            {
+              "name": "indexState"
+            },
+            {
+              "name": "upMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "upVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateralMint"
+            }
+          ]
+        },
+        {
+          "name": "userCollateral",
+          "docs": [
+            "The user's collateral account (its mint is checked by every transfer)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "userClaims",
+          "docs": [
+            "The user's token account of the traded side (UP or DOWN mint)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "side",
+          "type": "u8"
+        },
+        {
+          "name": "usdcIn",
+          "type": "u64"
+        },
+        {
+          "name": "minOut",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "createSeries",
       "docs": [
         "Creates the next series of a class and kind. Anyone, after the previous one expired."
@@ -201,6 +354,142 @@ export type Clamp = {
       ]
     },
     {
+      "name": "deposit",
+      "docs": [
+        "Deposits collateral for vault shares. Remaining accounts: active series and their IndexStates."
+      ],
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "shareMint",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "idle",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "collateralMint"
+        },
+        {
+          "name": "userCollateral",
+          "writable": true
+        },
+        {
+          "name": "userShares",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "shareMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "initIndex",
       "docs": [
         "Creates the index of a class and binds its observation ring. Admin only."
@@ -268,6 +557,118 @@ export type Clamp = {
           "type": "u8"
         }
       ]
+    },
+    {
+      "name": "initVault",
+      "docs": [
+        "Creates the vault, its share mint and idle account. Admin, once."
+      ],
+      "discriminator": [
+        77,
+        79,
+        85,
+        150,
+        33,
+        217,
+        52,
+        106
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "shareMint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  104,
+                  97,
+                  114,
+                  101,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "idle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  108,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateralMint",
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "initialize",
@@ -774,6 +1175,274 @@ export type Clamp = {
       ]
     },
     {
+      "name": "seedSeries",
+      "docs": [
+        "Puts the vault's allocation into the pool of a series. Anyone, once."
+      ],
+      "discriminator": [
+        91,
+        147,
+        182,
+        170,
+        97,
+        255,
+        45,
+        129
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "idle",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "tokens",
+          "accounts": [
+            {
+              "name": "series",
+              "writable": true
+            },
+            {
+              "name": "indexState"
+            },
+            {
+              "name": "upMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "upVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateralMint"
+            }
+          ]
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "sell",
+      "docs": [
+        "Sells claims of one side through the pool."
+      ],
+      "discriminator": [
+        51,
+        230,
+        133,
+        164,
+        1,
+        127,
+        131,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "idle",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "tokens",
+          "accounts": [
+            {
+              "name": "series",
+              "writable": true
+            },
+            {
+              "name": "indexState"
+            },
+            {
+              "name": "upMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "upVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateralMint"
+            }
+          ]
+        },
+        {
+          "name": "userCollateral",
+          "docs": [
+            "The user's collateral account (its mint is checked by every transfer)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "userClaims",
+          "docs": [
+            "The user's token account of the traded side (UP or DOWN mint)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "side",
+          "type": "u8"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "minUsdcOut",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "setClass",
       "docs": [
         "Creates or updates a GPU class. Admin only."
@@ -944,6 +1613,239 @@ export type Clamp = {
           }
         }
       ]
+    },
+    {
+      "name": "sweepSeries",
+      "docs": [
+        "Returns the vault's units of a settled series to idle USDC. Anyone."
+      ],
+      "discriminator": [
+        91,
+        199,
+        119,
+        17,
+        48,
+        147,
+        69,
+        233
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "idle",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "tokens",
+          "accounts": [
+            {
+              "name": "series",
+              "writable": true
+            },
+            {
+              "name": "indexState"
+            },
+            {
+              "name": "upMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "upVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateralMint"
+            }
+          ]
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw",
+      "docs": [
+        "Burns vault shares for idle collateral. Remaining accounts as for `deposit`."
+      ],
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "shareMint",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "idle",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "collateralMint"
+        },
+        {
+          "name": "userCollateral",
+          "writable": true
+        },
+        {
+          "name": "userShares",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "shareMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "shares",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1011,6 +1913,19 @@ export type Clamp = {
         250,
         162
       ]
+    },
+    {
+      "name": "vault",
+      "discriminator": [
+        211,
+        8,
+        232,
+        43,
+        2,
+        152,
+        117,
+        119
+      ]
     }
   ],
   "events": [
@@ -1054,6 +1969,19 @@ export type Clamp = {
       ]
     },
     {
+      "name": "recentered",
+      "discriminator": [
+        231,
+        23,
+        70,
+        58,
+        160,
+        187,
+        132,
+        242
+      ]
+    },
+    {
       "name": "redeemed",
       "discriminator": [
         14,
@@ -1093,6 +2021,19 @@ export type Clamp = {
       ]
     },
     {
+      "name": "seriesSeeded",
+      "discriminator": [
+        3,
+        116,
+        79,
+        19,
+        134,
+        234,
+        6,
+        108
+      ]
+    },
+    {
       "name": "seriesSettled",
       "discriminator": [
         119,
@@ -1103,6 +2044,58 @@ export type Clamp = {
         59,
         197,
         235
+      ]
+    },
+    {
+      "name": "seriesSwept",
+      "discriminator": [
+        118,
+        12,
+        154,
+        218,
+        124,
+        65,
+        80,
+        203
+      ]
+    },
+    {
+      "name": "trade",
+      "discriminator": [
+        24,
+        254,
+        218,
+        152,
+        253,
+        43,
+        18,
+        81
+      ]
+    },
+    {
+      "name": "vaultDeposit",
+      "discriminator": [
+        4,
+        248,
+        234,
+        163,
+        99,
+        238,
+        140,
+        45
+      ]
+    },
+    {
+      "name": "vaultWithdraw",
+      "discriminator": [
+        133,
+        90,
+        194,
+        198,
+        170,
+        52,
+        90,
+        180
       ]
     }
   ],
@@ -1226,6 +2219,66 @@ export type Clamp = {
       "code": 6023,
       "name": "invalidSide",
       "msg": "Side must be 0 (UP) or 1 (DOWN)"
+    },
+    {
+      "code": 6024,
+      "name": "seriesNeedsSettlement",
+      "msg": "A series past expiry must be settled before the vault can be valued"
+    },
+    {
+      "code": 6025,
+      "name": "activeSeriesMismatch",
+      "msg": "Remaining accounts must be every active series and its IndexState, in vault order"
+    },
+    {
+      "code": 6026,
+      "name": "invalidDeposit",
+      "msg": "Deposit refused (zero, below the 10 USDC first deposit, or worth no share)"
+    },
+    {
+      "code": 6027,
+      "name": "invalidWithdraw",
+      "msg": "Withdrawal refused (zero or more shares than exist)"
+    },
+    {
+      "code": 6028,
+      "name": "notEnoughIdle",
+      "msg": "Not enough idle USDC in the vault"
+    },
+    {
+      "code": 6029,
+      "name": "alreadySeeded",
+      "msg": "The series is already seeded"
+    },
+    {
+      "code": 6030,
+      "name": "notSeeded",
+      "msg": "The series is not seeded"
+    },
+    {
+      "code": 6031,
+      "name": "activeListFull",
+      "msg": "The vault already holds the maximum number of series"
+    },
+    {
+      "code": 6032,
+      "name": "tradingClosed",
+      "msg": "Trading is closed for this series"
+    },
+    {
+      "code": 6033,
+      "name": "poolPaused",
+      "msg": "The pool is paused: the outcome is almost certain"
+    },
+    {
+      "code": 6034,
+      "name": "slippageExceeded",
+      "msg": "The result is below the minimum you set"
+    },
+    {
+      "code": 6035,
+      "name": "nothingToSweep",
+      "msg": "Nothing to sweep"
     }
   ],
   "types": [
@@ -1804,6 +2857,38 @@ export type Clamp = {
       }
     },
     {
+      "name": "recentered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "fairValuePpm",
+            "type": "u64"
+          },
+          {
+            "name": "poolUp",
+            "type": "u64"
+          },
+          {
+            "name": "poolDown",
+            "type": "u64"
+          },
+          {
+            "name": "invUp",
+            "type": "u64"
+          },
+          {
+            "name": "invDown",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "redeemed",
       "type": {
         "kind": "struct",
@@ -2183,6 +3268,34 @@ export type Clamp = {
       }
     },
     {
+      "name": "seriesSeeded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "allocation",
+            "type": "u64"
+          },
+          {
+            "name": "fairValuePpm",
+            "type": "u64"
+          },
+          {
+            "name": "poolUp",
+            "type": "u64"
+          },
+          {
+            "name": "poolDown",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "seriesSettled",
       "docs": [
         "A series was settled (spec 11)."
@@ -2209,6 +3322,30 @@ export type Clamp = {
           {
             "name": "settledTs",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "seriesSwept",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "upUnits",
+            "type": "u64"
+          },
+          {
+            "name": "downUnits",
+            "type": "u64"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
           }
         ]
       }
@@ -2271,6 +3408,170 @@ export type Clamp = {
               "Weight in the weighted median. 0 = left out."
             ],
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "trade",
+      "docs": [
+        "A pool trade (spec 8.3, 8.4). `usdc` is paid in (buy) or paid out (sell)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": "u8"
+          },
+          {
+            "name": "isBuy",
+            "type": "bool"
+          },
+          {
+            "name": "usdc",
+            "type": "u64"
+          },
+          {
+            "name": "claims",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          },
+          {
+            "name": "poolUp",
+            "type": "u64"
+          },
+          {
+            "name": "poolDown",
+            "type": "u64"
+          },
+          {
+            "name": "fairValuePpm",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vault",
+      "docs": [
+        "The liquidity vault (spec 9). PDA `[\"vault\"]`. Owns the share mint",
+        "`[\"shares\"]` and the idle collateral account `[\"idle\"]`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "shareMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "idle",
+            "type": "pubkey"
+          },
+          {
+            "name": "activeSeries",
+            "docs": [
+              "Seeded and not yet swept series, in seeding order."
+            ],
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "activeCount",
+            "type": "u8"
+          },
+          {
+            "name": "lockedShares",
+            "docs": [
+              "Share units of the first deposit that nobody owns (spec 9.2). They",
+              "count in the total supply for every share price."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "vaultDeposit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "nav",
+            "type": "u64"
+          },
+          {
+            "name": "totalShares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vaultWithdraw",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "nav",
+            "type": "u64"
+          },
+          {
+            "name": "totalShares",
+            "type": "u64"
           }
         ]
       }

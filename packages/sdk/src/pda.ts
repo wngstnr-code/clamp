@@ -37,3 +37,8 @@ export const faucetMintAuthority = (programId = TEST_USDC_PROGRAM_ID) =>
   pda([Buffer.from("mint_authority")], programId);
 export const faucetRecord = (wallet: PublicKey, programId = TEST_USDC_PROGRAM_ID) =>
   pda([Buffer.from("faucet"), wallet.toBuffer()], programId);
+
+/** Vault PDAs (spec 9): the vault, its share mint and its idle collateral account. */
+export const vaultPda = (programId = CLAMP_PROGRAM_ID) => pda([Buffer.from("vault")], programId);
+export const sharesMintPda = (programId = CLAMP_PROGRAM_ID) => pda([Buffer.from("shares")], programId);
+export const idlePda = (programId = CLAMP_PROGRAM_ID) => pda([Buffer.from("idle")], programId);
