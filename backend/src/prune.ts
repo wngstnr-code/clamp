@@ -6,7 +6,7 @@
 import type { Store } from "./store.js";
 import type { StepResult } from "./tick.js";
 
-export const RAW_KEEP_DAYS = 30;
+export const RAW_KEEP_DAYS = 20;
 const DAY_MS = 86_400_000;
 /** Files listed per page, and pages per run (the archive adds about 600 a day). */
 const PAGE = 1_000;
