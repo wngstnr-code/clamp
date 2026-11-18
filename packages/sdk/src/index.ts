@@ -7,5 +7,7 @@ export * from "./index-reader.js";
 export * from "./verify.js";
 export * from "./math/median.js";
 export * from "./math/twap.js";
+export * from "./math/pool.js";
+export * from "./math/vault.js";
 export * from "./sources/rules.js";
 export * from "./sources/classes.js";
