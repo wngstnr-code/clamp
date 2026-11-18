@@ -8,6 +8,7 @@ export const TEST_USDC_PROGRAM_ID = new PublicKey("5QZihvTBjqZkmbX2gFcQjqnNBBq1A
 export const MIN_UPDATE_INTERVAL = 600;
 export const MAX_GAP = 7_200;
 export const REPORT_WINDOW = 900;
+export const REPORT_WAIT = 600;
 export const OBS_CARDINALITY = 2_048;
 export const MAX_REPORTERS = 5;
 export const MAX_SOURCES = 6;

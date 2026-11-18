@@ -429,6 +429,11 @@ export type Clamp = {
       "code": 6010,
       "name": "mathInvalidInput",
       "msg": "Invalid input to a math function"
+    },
+    {
+      "code": 6011,
+      "name": "missingRawHash",
+      "msg": "A price above 0 needs the hash of its raw API answer"
     }
   ],
   "types": [
