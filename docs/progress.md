@@ -29,7 +29,6 @@ Update this file at the end of every session and after every milestone. Newest e
 ### AG (web app)
 
 1. Scaffold `web/` and connect a devnet wallet.
-2. Set up the scheduled reporter job in AG's GitHub account once the report step exists (reporter 2, D-042).
 3. Start the index page from the real program interface (ready since 2026-11-18, M1 stage 2). What is final for the index pages:
    - **IDL and types:** `packages/sdk/src/idl/clamp.json` and `clamp.ts` (copies of the Anchor build, refreshed by Wangsit on every program change). Use them only through `packages/sdk` (CLAUDE.md section 3), never a hand-written copy.
    - **Accounts to read:** `ClassConfig` (PDA `["class", class_id]`: name, reporters, `min_reporters`, sources, bounds), `IndexState` (PDA `["index", class_id]`: `last_price`, `last_ts`, `update_count`, `reports[]` with each reporter's latest prices), `Observations` (address in `IndexState.observations`, ring of 2,048 entries, newest at `obs_index`, `obs_count` filled). Layouts in `architecture.md` section 3.1.
@@ -44,7 +43,6 @@ Update this file at the end of every session and after every milestone. Newest e
 1. Create Vast.ai and RunPod accounts, rent an RTX 4090 for a small real job, make a read-only API key. Then run the two key tests in "Assumptions to verify" (A6, A8).
 2. Start interviews and look for one pilot renter and one pilot GPU owner (`research.md` section 6).
 3. **Register now (both AG and Wangsit, each with their own email)** at https://app.dev3pack.xyz/hackathon/register. Wait for acceptance (check spam), sign up at hack.dev3pack.xyz/auth/sign-up, then create one team in the dashboard and join it with the code (`hackathon.md` section 1). The exact submission hour will appear in the dashboard.
-4. Find one outside person willing to run a reporter (a scheduled job with a key).
 
 ## Blockers and open questions
 
@@ -58,7 +56,7 @@ Update this file at the end of every session and after every milestone. Newest e
 | Partner tracks: does one fit without changing the product? | user | open, not announced yet |
 | Name: keep Clamp although `clamp.finance` is a live crypto accounting product with the same name? | user | closed: keep it for the hackathon, no domain bought, hosted on a Vercel address (D-037) |
 | X handle for the project | user | open (could not be checked without an X login) |
-| Who runs reporters two and three | both | closed: reporter 2 is AG, reporter 3 an outside person (D-042). Still open: finding that person. |
+| Who runs reporters two and three | both | closed 2026-11-18 (D-054): team-run, reporter 2 on GitHub Actions, reporter 3 on Netlify. |
 | Legal status of the product | nobody | open, stated honestly, devnet only |
 | Pilot renter and pilot GPU owner | user | open |
 

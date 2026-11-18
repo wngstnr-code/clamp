@@ -21,7 +21,7 @@ Owners: **W** = Wangsit (programs, backend), **AG** = AG (web app), **U** = thin
 - [ ] W: `git init`, pnpm workspace, Cargo workspace, `.gitignore`, `.env.example`, local exclude for `CLAUDE.md` and `.claude/`
 - [ ] W: devnet keypairs (deployer, crank, test users), funded from the faucet by the user
 - [ ] W: Supabase project, tables of `architecture.md` section 5.1, read-only policies
-- [ ] W: decide where reporters two and three run and who runs them (`architecture.md` section 3.5). Ask one outside person if possible.
+- [x] W: decide where reporters two and three run and who runs them (`architecture.md` section 3.5, D-054: team-run on GitHub Actions and Netlify).
 - [ ] AG: scaffold `web/` (Next.js, Tailwind, TypeScript), wallet connection on devnet, base layout and design direction
 - [ ] AG: pick the Solana client and wallet packages, record them in `decisions.md`
 - [ ] U: create Vast.ai and RunPod accounts, rent an RTX 4090 for a small real job, create a read-only API key (needed to build and test the bill reader with a real bill)
