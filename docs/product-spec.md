@@ -397,7 +397,7 @@ On devnet the collateral is a test USDC mint (`tUSDC`, 6 decimals) with its own 
 | Anyone | Create, seed, settle, sweep, roll | |
 | User | Mint, merge, trade, lock, redeem, deposit, withdraw | |
 | Reporter | Send price reports for a class | Anything else. One reporter alone cannot move the index once the quorum is 2. |
-| Config admin | Add a class, set the reporter list and quorum of a class, set bounds, half widths and fees for future updates and future series | Move collateral, pool or vault funds. Change a live or settled series. Stop mint, merge, redeem or withdraw. |
+| Config admin | Add a class, set the reporter list and quorum of a class, set bounds, half widths and fees for future updates and future series. The sources of a class are fixed when it is created. The admin is set once, by the program's upgrade authority. | Move collateral, pool or vault funds. Change a live or settled series. Stop mint, merge, redeem or withdraw. |
 | Program upgrade authority | Upgrade the program (devnet, during the hackathon) | |
 
 **The deployed program must be verified (D-041).** Every devnet deploy that others rely on is a verifiable build of a commit in the repo. The README gives the exact command that shows the on-chain program matches that source, so the upgrade authority cannot swap in code that nobody can read.

@@ -96,22 +96,27 @@ pub struct Source {
 
 // PDA ["index", class_id]
 pub struct IndexState {
-    class_id: u8, last_ts: i64, last_price: u64,
+    class_id: u8,
+    observations: Pubkey,           // the ring bound by init_index (D-051)
+    last_ts: i64, last_price: u64,
     cum_price: u128, cum_valid: u64,
     obs_index: u16, obs_count: u16, update_count: u64,
     reports: [Report; 5],           // the latest report of each reporter slot
     bump: u8, _reserved: [u8; 64],
 }
 pub struct Report {
+    reporter: Pubkey,               // counts only while this key is still in the slot
     ts: i64, used: bool,
     prices: [u64; 6],               // by source slot, 0 = the source did not answer
     capacities: [u32; 6],
 }
 
-// PDA ["obs", class_id], zero-copy, created at full size by the setup script
-// 48 bytes per entry with padding, about 98 KB, rent about 0.69 SOL per class
-pub struct Observations { items: [Observation; 2048] }
-pub struct Observation { ts: i64, price: u64, cum_price: u128, cum_valid: u64 }
+// NOT a PDA (D-051): a keypair account created by the setup script at full size
+// (8 + 2048 * 40 = 81,928 bytes, rent about 0.57 SOL), owned by the program,
+// bound to the class by init_index and checked through IndexState.observations.
+// Zero-copy. cum_price is split into two u64 halves (8-byte alignment, no padding).
+pub struct Observations { items: [ObservationSlot; 2048] }
+pub struct ObservationSlot { ts: i64, price: u64, cum_price_lo: u64, cum_price_hi: u64, cum_valid: u64 }
 
 // PDA ["series", class_id, kind, start_ts]
 pub struct Series {
@@ -157,7 +162,7 @@ Rules for layouts: every account has reserved bytes. Never change the layout of 
 | Config | `"config"` |
 | ClassConfig | `"class"`, `class_id` (u8) |
 | IndexState | `"index"`, `class_id` |
-| Observations | `"obs"`, `class_id` |
+| Observations | not a PDA: keypair account, address stored in `IndexState.observations` (D-051) |
 | Series | `"series"`, `class_id`, `kind` (u8), `start_ts` (i64, little endian) |
 | UP mint, DOWN mint | `"up"`, series and `"down"`, series |
 | Series collateral, UP vault, DOWN vault | `"collateral"`, series and `"upv"`, series and `"downv"`, series |
@@ -170,10 +175,10 @@ Ids: class `1` = RTX 4090, `2` = H100. Kind `0` = daily, `1` = weekly, `2` = mon
 
 | Instruction | Who | Spec | Notes |
 |---|---|---|---|
-| `initialize(params)` | admin, once | 13 | Creates Config and Vault |
-| `set_class(class_id, params)` | admin | 6, 13 | Creates or updates a ClassConfig (reporters, quorum, sources, bounds, widths). Affects future updates and future series only. |
-| `init_index(class_id)` | admin | 6.3 | Binds the pre-created Observations account |
-| `submit_report(class_id, prices, capacities, raw_hashes)` | a registered reporter | 6.2, 6.3 | Stores the report, then updates the index when the quorum and the interval allow it |
+| `initialize(params)` | program upgrade authority, once | 13 | Creates Config. Accounts: collateral mint, treasury token account of that mint, the program and its program data (the signer must be the upgrade authority, D-052). The Vault is created in M2. |
+| `set_class(class_id, params)` | admin | 6, 13 | Creates or updates a ClassConfig (reporters, quorum, bounds, widths). The sources are fixed when the class is created (D-052). Affects future updates and future series only. Limits: 1 to 5 distinct reporters, `1 <= min_reporters <= reporters`, 1 to 6 distinct sources, fixed weight 1 or 2, `max_step_ppm` 1 to 500,000, half widths 1 to 900,000 ppm. |
+| `init_index(class_id)` | admin | 6.3 | Creates IndexState and binds the pre-created Observations account (must be all zero, owned by the program, exactly 81,928 bytes) |
+| `submit_report(class_id, prices: [u64; 6], capacities: [u32; 6], raw_hashes: [[u8; 32]; 6])` | a registered reporter | 6.2, 6.3 | Stores the report, then updates the index when the quorum and the interval allow it. Slots beyond the class's source count must be 0. About 15,000 compute units with an update. |
 | `create_series(class_id, kind)` | anyone | 7.1 | Creates the series, its two mints and three token accounts |
 | `seed_series()` | anyone, once | 9.2 | Moves the allocation from the vault and re-centers |
 | `mint_pairs(amount)` / `merge_pairs(amount)` | user | 7.2 | |
@@ -230,7 +235,7 @@ All four requests were run by hand on 2026-11-17 and returned usable data.
 
 ### 3.7 Events
 
-Anchor events, one per state change: `ReportSubmitted` (class, reporter, ts, per-source price, capacity and raw hash), `IndexUpdated` (class, ts, price, candidate, reporter count, per-source price and weight), `SeriesCreated`, `SeriesSeeded`, `PairsMinted`, `PairsMerged`, `Trade` (series, user, side, direction, usdc, claims, fee, pool numbers after), `Recentered`, `SeriesSettled` (avg, up_value, coverage), `Redeemed`, `VaultDeposit`, `VaultWithdraw`, `SeriesSwept`, `LockOpened`, `LockClosed`, `LockRolled`. The proof page and the worker read them from transaction logs.
+Anchor events, one per state change: `ReportSubmitted` (class_id, reporter, ts, prices, capacities, raw_hashes, all by source slot), `IndexUpdated` (class_id, ts, price, candidate, reporter_count, sources: per slot `{source_id, price, capacity, weight}`, cum_price, cum_valid, update_count), `SeriesCreated`, `SeriesSeeded`, `PairsMinted`, `PairsMerged`, `Trade` (series, user, side, direction, usdc, claims, fee, pool numbers after), `Recentered`, `SeriesSettled` (avg, up_value, coverage), `Redeemed`, `VaultDeposit`, `VaultWithdraw`, `SeriesSwept`, `LockOpened`, `LockClosed`, `LockRolled`. The proof page and the worker read them from transaction logs.
 
 ## 4. Program `test-usdc` (devnet only)
 
