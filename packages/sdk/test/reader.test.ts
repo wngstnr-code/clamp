@@ -1,7 +1,8 @@
 // Decoders against the IDL: encode an account with Anchor's coder, decode it
 // with the hand-written decoder, compare.
 
-import { BN, BorshCoder, type Idl } from "@anchor-lang/core";
+import { BorshCoder, type Idl } from "@anchor-lang/core";
+import BN from "bn.js";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { describe, expect, it } from "vitest";
 

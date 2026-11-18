@@ -34,6 +34,22 @@ class ReadOnlyWallet implements Wallet {
   }
 }
 
+/** A wallet backed by a local keypair (worker, scripts). */
+export class KeypairWallet implements Wallet {
+  constructor(readonly payer: Keypair) {}
+  get publicKey() {
+    return this.payer.publicKey;
+  }
+  async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+    if ("version" in tx) tx.sign([this.payer]);
+    else tx.partialSign(this.payer);
+    return tx;
+  }
+  async signAllTransactions<T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> {
+    return Promise.all(txs.map((t) => this.signTransaction(t)));
+  }
+}
+
 /** Program client. Pass a wallet to send transactions, or none to only read. */
 export function clampProgram(connection: Connection, wallet?: Wallet): Program<Clamp> {
   const provider = new AnchorProvider(connection, wallet ?? new ReadOnlyWallet(), {
