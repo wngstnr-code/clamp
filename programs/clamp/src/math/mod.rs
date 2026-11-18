@@ -2,7 +2,9 @@
 //! function can be unit tested on the host and mirrored in the SDK.
 
 pub mod median;
+pub mod pool;
 pub mod twap;
+pub mod vault;
 
 /// Parts per million: 1_000_000 = 100%.
 pub const PPM: u64 = 1_000_000;
