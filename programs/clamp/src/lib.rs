@@ -1,7 +1,8 @@
 //! Clamp: a fully collateralized two-way price lock on a GPU rental price index.
 //!
 //! M1: the Clamp Index (config, classes, reporters, updates, period average).
-//! The market, vault and locks follow from M2 on (docs/architecture.md 3.3).
+//! M2: series, claim pairs, settlement and redeem; the pool, vault and locks
+//! follow (docs/architecture.md 3.3).
 
 use anchor_lang::prelude::*;
 
@@ -48,5 +49,30 @@ pub mod clamp {
         instructions::submit_report::handle_submit_report(
             ctx, class_id, prices, capacities, raw_hashes,
         )
+    }
+
+    /// Creates the next series of a class and kind. Anyone, after the previous one expired.
+    pub fn create_series(ctx: Context<CreateSeries>, class_id: u8, kind: u8) -> Result<()> {
+        instructions::create_series::handle_create_series(ctx, class_id, kind)
+    }
+
+    /// Pays `amount` collateral, receives `amount` UP and `amount` DOWN.
+    pub fn mint_pairs(ctx: Context<Pairs>, amount: u64) -> Result<()> {
+        instructions::pairs::handle_mint_pairs(ctx, amount)
+    }
+
+    /// Returns `amount` UP and `amount` DOWN, receives `amount` collateral.
+    pub fn merge_pairs(ctx: Context<Pairs>, amount: u64) -> Result<()> {
+        instructions::pairs::handle_merge_pairs(ctx, amount)
+    }
+
+    /// Settles an expired series from the index period average. Anyone.
+    pub fn settle_series(ctx: Context<SettleSeries>) -> Result<()> {
+        instructions::settle::handle_settle_series(ctx)
+    }
+
+    /// Burns settled claims of one side for their value in collateral.
+    pub fn redeem(ctx: Context<Redeem>, side: u8, amount: u64) -> Result<()> {
+        instructions::settle::handle_redeem(ctx, side, amount)
     }
 }

@@ -42,3 +42,52 @@ pub struct IndexUpdated {
     pub cum_valid: u64,
     pub update_count: u64,
 }
+
+/// A series was created (spec 7.1).
+#[event]
+pub struct SeriesCreated {
+    pub series: Pubkey,
+    pub class_id: u8,
+    pub kind: u8,
+    pub seq: u32,
+    pub start_ts: i64,
+    pub close_ts: i64,
+    pub expiry_ts: i64,
+    pub center: u64,
+    pub lower: u64,
+    pub upper: u64,
+    pub start_index: u64,
+}
+
+#[event]
+pub struct PairsMinted {
+    pub series: Pubkey,
+    pub user: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct PairsMerged {
+    pub series: Pubkey,
+    pub user: Pubkey,
+    pub amount: u64,
+}
+
+/// A series was settled (spec 11).
+#[event]
+pub struct SeriesSettled {
+    pub series: Pubkey,
+    pub avg: u64,
+    pub up_value: u32,
+    pub coverage_ppm: u32,
+    pub settled_ts: i64,
+}
+
+#[event]
+pub struct Redeemed {
+    pub series: Pubkey,
+    pub user: Pubkey,
+    pub side: u8,
+    pub amount: u64,
+    pub payout: u64,
+}

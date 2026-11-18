@@ -39,10 +39,16 @@ pub struct ClassConfig {
     pub max_step_ppm: u32,
     /// Band half width per series kind: daily, weekly, monthly.
     pub half_width_ppm: [u32; 3],
-    /// The latest series per kind (set from M2 on).
+    /// The latest series per kind (set by create_series).
     pub current_series: [Pubkey; 3],
     pub bump: u8,
-    pub _reserved: [u8; 64],
+    /// Expiry of the latest series per kind; 0 = none yet. Taken from the
+    /// reserved bytes in M2 (D-056), so existing accounts read 0.
+    pub current_expiry: [i64; 3],
+    /// Series created so far per kind; the next series uses this number in its
+    /// PDA seeds (D-056).
+    pub series_count: [u32; 3],
+    pub _reserved: [u8; 28],
 }
 
 impl ClassConfig {

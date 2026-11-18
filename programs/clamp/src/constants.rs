@@ -26,3 +26,24 @@ pub const BPS: u16 = 10_000;
 pub const CONFIG_SEED: &[u8] = b"config";
 pub const CLASS_SEED: &[u8] = b"class";
 pub const INDEX_SEED: &[u8] = b"index";
+pub const SERIES_SEED: &[u8] = b"series";
+pub const UP_MINT_SEED: &[u8] = b"up";
+pub const DOWN_MINT_SEED: &[u8] = b"down";
+pub const COLLATERAL_SEED: &[u8] = b"collateral";
+pub const UP_VAULT_SEED: &[u8] = b"upv";
+pub const DOWN_VAULT_SEED: &[u8] = b"downv";
+
+/// Series kinds and their durations in seconds (spec 7.1).
+pub const KIND_DAILY: u8 = 0;
+pub const KIND_WEEKLY: u8 = 1;
+pub const KIND_MONTHLY: u8 = 2;
+pub const DURATIONS: [i64; 3] = [86_400, 604_800, 2_592_000];
+/// The band center is the index average of this window before creation.
+pub const CENTER_WINDOW: i64 = 72 * 3_600;
+/// Creation needs at least this much counted time in the center window.
+pub const MIN_CENTER_COUNTED: u64 = 6 * 3_600;
+/// Claims and collateral use 6 decimals.
+pub const CLAIM_DECIMALS: u8 = 6;
+/// Sides of a claim.
+pub const SIDE_UP: u8 = 0;
+pub const SIDE_DOWN: u8 = 1;

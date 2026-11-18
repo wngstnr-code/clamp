@@ -132,26 +132,43 @@ pub fn find_at_or_before(
     count: usize,
     x: i64,
 ) -> Option<usize> {
-    let capacity = ring.len();
+    find_at_or_before_by(|i| ring[i].ts, ring.len(), newest, count, x)
+}
+
+/// Same search, reading timestamps through `ts_at(slot)`, so the program can
+/// search its zero-copy ring without copying it.
+pub fn find_at_or_before_by(
+    ts_at: impl Fn(usize) -> i64,
+    capacity: usize,
+    newest: usize,
+    count: usize,
+    x: i64,
+) -> Option<usize> {
     if count == 0 || capacity == 0 || count > capacity || newest >= capacity {
         return None;
     }
     let oldest = oldest_slot(capacity, newest, count);
     let slot = |logical: usize| (oldest + logical) % capacity;
-    if ring[slot(0)].ts > x {
+    if ts_at(slot(0)) > x {
         return None;
     }
     // Largest logical index with ts <= x. Invariant: ts(lo) <= x.
     let (mut lo, mut hi) = (0usize, count - 1);
     while lo < hi {
         let mid = lo + (hi - lo).div_ceil(2);
-        if ring[slot(mid)].ts <= x {
+        if ts_at(slot(mid)) <= x {
             lo = mid;
         } else {
             hi = mid - 1;
         }
     }
     Some(slot(lo))
+}
+
+/// Physical slot of the oldest stored observation.
+pub fn oldest_slot_of(capacity: usize, newest: usize, count: usize) -> Option<usize> {
+    (count > 0 && count <= capacity && newest < capacity)
+        .then(|| oldest_slot(capacity, newest, count))
 }
 
 #[cfg(test)]
