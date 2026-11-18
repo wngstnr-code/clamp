@@ -170,6 +170,8 @@ Full details go in `docs/build-and-deploy.md`. Add each command to this table wh
 | Verify a report transaction | `pnpm --filter @clamp/backend verify <signature>` |
 | Deploy the backend | `vercel deploy --prod --yes` (repo root) |
 | Backend health | `curl https://clamp-backend.vercel.app/health` |
+| Bundle the standalone reporter | `pnpm --filter @clamp/backend bundle:reporter` |
+| Set reporters and quorum (admin) | `pnpm --filter @clamp/backend set-reporters <min> <keypair files>...` |
 | Read-only SQL on the project | `pnpm exec supabase db query --remote --read-only "<sql>"` |
 
 ## 12. Definition of done (for any task)

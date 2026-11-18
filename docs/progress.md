@@ -24,7 +24,7 @@ Update this file at the end of every session and after every milestone. Newest e
 1. ~~Install the Solana CLI and Anchor~~ (done 2026-11-18: Agave 4.4.1, Anchor 1.2.2, solana-verify 0.5.2).
 2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Step 3 done: empty `clamp` and `test-usdc` programs, `Anchor.toml`, Cargo workspace. Step 4 done: deployer, worker and two test users in `~/.config/solana/clamp/` (addresses in `build-and-deploy.md` section 2). Next: the user funds deployer and worker, then the verifiable build spike (step 5, Docker must run).
 3. ~~Try a verifiable build once with an empty program and check it against devnet~~ (done 2026-11-18, hashes match). Step 6 done: Supabase project `clamp` (Singapore) linked, first migration applied, access checked. The user filled `.env` (Supabase URL, anon key, service role key), checked: anon read 200, anon write 401, service read 200.
-4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). ~~M1 stage 3: SDK and source rules~~ (done 2026-11-18). M1 stage 4 code done (2026-11-18): `backend/` with report and record steps, dry run on live data works. M1 stage 5 done (2026-11-18): the M1 program is on devnet (verifiable, hashes match), setup done, first updates sent from a laptop and verified. **The index runs on its own since 2026-11-18 11:00 UTC**: pg_cron calls `https://clamp-backend.vercel.app/cron/tick` every 15 minutes (reporter 1, quorum 1). Next: M1 stage 6, reporters 2 and 3 (raw archive per reporter, then quorum 2).
+4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). ~~M1 stage 3: SDK and source rules~~ (done 2026-11-18). M1 stage 4 code done (2026-11-18): `backend/` with report and record steps, dry run on live data works. M1 stage 5 done (2026-11-18): the M1 program is on devnet (verifiable, hashes match), setup done, first updates sent from a laptop and verified. **The index runs on its own since 2026-11-18 11:00 UTC**: pg_cron calls `https://clamp-backend.vercel.app/cron/tick` every 15 minutes (reporter 1, quorum 1). M1 stage 6 in progress: shared signed archive (`POST /archive`) live, standalone reporter bundle works (reporter 2 tested from a laptop, verified), reporters 2 and 3 registered with quorum 1. Next: schedule reporter 2 (GitHub Actions) and reporter 3 (Netlify), then quorum 2.
 
 ### AG (web app)
 
@@ -151,7 +151,7 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 | Config | `7yFBESGPYcdomHUBCwgE33im7fGYdu4GqPCzoDLqKZk2` | 2026-11-18 |
 | Class 1 RTX 4090: ClassConfig, IndexState | `DNu7f1q7gH6Je7DzBszCDouadGYfZnTUhYxsAhU5stpa`, `AALSnfuAPegBmMthTWJ8KEXFEbz8LcgdfDbw997j3sTq` | 2026-11-18 |
 | Class 2 H100: ClassConfig, IndexState | `2ADhvfNd62U51EKMmPWFYNVRWbHjjxxed2S1wth3HaSW`, `8ZAzFLdgjjnhQzb7rHUy3ELsVqyrLqNxtKSjtZv6uH62` | 2026-11-18 |
-| Reporters | class 1 and 2: worker `FxgwWh2iMLftA5PNTKCoXyDv9BN6JbERg16Qj4f8r2Bn` only, `min_reporters = 1` | 2026-11-18 |
+| Reporters (slot order) | class 1 and 2: worker `FxgwWh2iMLftA5PNTKCoXyDv9BN6JbERg16Qj4f8r2Bn` (Vercel), reporter 2 `2Yohxm6Yiip4Cync4kZpkXzS3iQ6CmEHeBedbRndQ7YQ` (GitHub Actions, not scheduled yet), reporter 3 `6sCG9nh9Z3pSGYQ38UTaiDTPDyh3x8eP4RLiMccQqU7` (Netlify, not scheduled yet); `min_reporters = 1` until 2 and 3 run on schedule | 2026-11-18 |
 | First index updates | RTX 4090 $0.3636 (tx `5v9i2za1...`), H100 $2.71 (tx `e9hoHr6S...`), both checked with `pnpm verify`: every source matches its public raw file | 2026-11-18 |
 
 ## Repository
@@ -159,6 +159,12 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-18, M1 stage 6 part 1 (Wangsit)
+
+- D-054: all reporters team-run on three platforms; public texts say "run by the Clamp team" without naming people.
+- `POST /archive` (signed by a registered reporter key, content-addressed, 5 MB limit, 5 minute timestamp window), `HttpArchiver`, standalone reporter (`src/reporter.ts`, bundled to `dist/reporter.mjs` with esbuild, 2.1 MB), `set-reporters` script. 13 backend tests.
+- Reporter 2 and 3 keys created in `~/.config/solana/clamp/` with 0.5 SOL each, registered for both classes (quorum 1). Reporter 2 ran once from a laptop: archive upload accepted, both classes updated, `pnpm verify` matched every source, the record step of reporter 1 stored its rows.
 
 ### 2026-11-18, M1 backend live (Wangsit)
 

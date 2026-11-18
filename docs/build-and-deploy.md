@@ -212,6 +212,16 @@ pnpm exec supabase db query --remote "select vault.create_secret('$(cat ~/.confi
 - Check the schedule: `select * from cron.job_run_details order by start_time desc limit 5` and `select status_code, content from net._http_response order by created desc limit 5` (read-only queries with `pnpm exec supabase db query --remote --read-only`).
 - `CRON_SECRET` is kept locally in `~/.config/solana/clamp/cron-secret.txt` (mode 600, outside the repo).
 
+### Reporters 2 and 3 (D-054)
+
+```
+pnpm --filter @clamp/backend bundle:reporter      # builds backend/dist/reporter.mjs (SDK first)
+REPORTER_KEYPAIR="$(cat ~/.config/solana/clamp/reporter-2.json)" node backend/dist/reporter.mjs   # one run, tested 2026-11-18
+pnpm --filter @clamp/backend set-reporters 1 worker.json reporter-2.json reporter-3.json         # admin: reporter list and quorum (run 2026-11-18)
+```
+
+The reporter needs only `REPORTER_KEYPAIR` (keypair file content) and optionally `SOLANA_RPC_URL` and `ARCHIVE_URL`. It uploads raw files to `https://clamp-backend.vercel.app/archive`, signed with its key, and holds no backend secret.
+
 ## 5. Web app
 
 All not run yet.
