@@ -17,7 +17,8 @@
     "verify": "tsx --env-file=../.env src/cli.ts verify",
     "bundle:reporter": "pnpm --filter @clamp/sdk build && esbuild src/reporter-cli.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/reporter.mjs --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --log-level=warning",
     "set-reporters": "tsx --env-file=../.env src/set-reporters.ts",
-    "faucet-claim": "tsx --env-file=../.env src/faucet-claim.ts"
+    "faucet-claim": "tsx --env-file=../.env src/faucet-claim.ts",
+    "series": "tsx --env-file=../.env src/series-cli.ts"
   },
   "dependencies": {
     "@clamp/sdk": "workspace:*",
