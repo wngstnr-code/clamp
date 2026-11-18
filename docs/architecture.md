@@ -239,7 +239,7 @@ Anchor events, one per state change: `ReportSubmitted` (class_id, reporter, ts, 
 
 ## 4. Program `test-usdc` (devnet only)
 
-A tiny program that is the mint authority of `tUSDC` (6 decimals). `claim()` mints 1,000 tUSDC to the caller, at most once per 24 hours per wallet (PDA `"faucet"`, wallet). It is never deployed to mainnet. The main program has no test-only instruction in its deployed build.
+A tiny program whose PDA `["mint_authority"]` is the mint authority of `tUSDC` (6 decimals). `claim()` mints 1,000 tUSDC to the caller's associated token account (created if needed, the caller pays rent), at most once per 24 hours per wallet (record PDA `["faucet", wallet]`: wallet, last_claim_ts, claims, bump). It accepts only a mint with 6 decimals whose authority is that PDA. Event `Claimed {wallet, mint, amount, ts}`. Errors `CooldownActive`, `Overflow`. It is never deployed to mainnet. The main program has no test-only instruction in its deployed build.
 
 ## 5. Backend (`backend/`)
 
