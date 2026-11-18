@@ -220,6 +220,16 @@ REPORTER_KEYPAIR="$(cat ~/.config/solana/clamp/reporter-2.json)" node backend/di
 pnpm --filter @clamp/backend set-reporters 1 worker.json reporter-2.json reporter-3.json         # admin: reporter list and quorum (run 2026-11-18)
 ```
 
+Hosting (live 2026-11-18):
+
+| Reporter | Where | Schedule (UTC minutes) | Update |
+|---|---|---|---|
+| 1 | Vercel backend, called by pg_cron | 0, 15, 30, 45 | `vercel deploy --prod --yes` |
+| 2 | GitHub Actions in the public repo `wngstnr-code/clamp-reporter` (secret `REPORTER_KEYPAIR`, set by the user with `gh secret set`) | 5, 20, 35, 50 | `scripts/publish-reporter.sh "<message>"` (bundles, copies the template from `scripts/reporter-repo/`, commits, pushes) |
+| 3 | Netlify scheduled function, site `clamp-reporter` (`https://clamp-reporter.netlify.app`, Free legacy plan, env `REPORTER_KEYPAIR` set by the user with `netlify env:set`) | 10, 25, 40, 55 | `scripts/deploy-reporter-netlify.sh` (needs `npx netlify-cli@27.16.2 login` once; the site link lives in `scripts/reporter-netlify/.netlify/`, not in git) |
+
+A manual run of reporter 2: `gh workflow run report -R wngstnr-code/clamp-reporter`. Reporter 3 cannot be called by URL in production; check its logs at `https://app.netlify.com/projects/clamp-reporter/logs/functions`.
+
 The reporter needs only `REPORTER_KEYPAIR` (keypair file content) and optionally `SOLANA_RPC_URL` and `ARCHIVE_URL`. It uploads raw files to `https://clamp-backend.vercel.app/archive`, signed with its key, and holds no backend secret.
 
 ## 5. Web app
