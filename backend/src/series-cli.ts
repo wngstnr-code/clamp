@@ -3,6 +3,10 @@
 //   pnpm --filter @clamp/backend series create <class> <kind> [payer.json]
 //   pnpm --filter @clamp/backend series mint   <class> <kind> <seq> <usdc> <keypair.json>
 //   pnpm --filter @clamp/backend series merge  <class> <kind> <seq> <usdc> <keypair.json>
+//   pnpm --filter @clamp/backend series vault-init
+//   pnpm --filter @clamp/backend series deposit <usdc> <keypair.json>
+//   pnpm --filter @clamp/backend series seed   <class> <kind> <seq>
+//   pnpm --filter @clamp/backend series buy|sell <class> <kind> <seq> <side 0|1> <usdc or claims> <keypair.json>
 // kind: 0 daily, 1 weekly, 2 monthly. Amounts in whole tUSDC.
 
 import { readFileSync } from "node:fs";
@@ -17,12 +21,20 @@ import {
   clampProgram,
   configPda,
   getIndex,
+  idlePda,
   indexPda,
+  sharesMintPda,
+  vaultPda,
   seriesAccounts,
   seriesPda,
 } from "@clamp/sdk";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { Connection, Keypair, SystemProgram } from "@solana/web3.js";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountIdempotentInstruction,
+  getAssociatedTokenAddressSync,
+} from "@solana/spl-token";
+import { Connection, Keypair, PublicKey, SystemProgram, type AccountMeta } from "@solana/web3.js";
 
 const KEY_DIR = join(homedir(), ".config", "solana", "clamp");
 const load = (f: string) =>
@@ -116,7 +128,130 @@ async function main() {
     console.log(`user holds ${up.value.uiAmountString} UP and DOWN, ${col.value.uiAmountString} tUSDC`);
     return;
   }
-  throw new Error("usage: series show|create|mint|merge ...");
+  if (cmd === "vault-init") {
+    const admin = load("deployer.json");
+    const program = clampProgram(connection, new KeypairWallet(admin));
+    const sig = await program.methods
+      .initVault()
+      .accountsPartial({
+        admin: admin.publicKey,
+        config: configPda(),
+        vault: vaultPda(),
+        shareMint: sharesMintPda(),
+        idle: idlePda(),
+        collateralMint: TUSDC_MINT,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+    console.log(`vault ${vaultPda().toBase58()} (${sig})`);
+    return;
+  }
+
+  /** The vault's active series and their IndexStates, for the NAV. */
+  const activeMetas = async (): Promise<AccountMeta[]> => {
+    const program = clampProgram(connection);
+    const vault = await program.account.vault.fetch(vaultPda());
+    const metas: AccountMeta[] = [];
+    for (const key of vault.activeSeries.slice(0, vault.activeCount)) {
+      const s = await program.account.series.fetch(key);
+      metas.push({ pubkey: key, isSigner: false, isWritable: false });
+      metas.push({ pubkey: indexPda(s.classId), isSigner: false, isWritable: false });
+    }
+    return metas;
+  };
+
+  if (cmd === "deposit") {
+    const user = load(b ?? "test-user-2.json");
+    const program = clampProgram(connection, new KeypairWallet(user));
+    const sig = await program.methods
+      .deposit(new BN(Math.round(Number(a) * 1e6)))
+      .accountsPartial({
+        user: user.publicKey,
+        vault: vaultPda(),
+        shareMint: sharesMintPda(),
+        idle: idlePda(),
+        collateralMint: TUSDC_MINT,
+        userCollateral: getAssociatedTokenAddressSync(TUSDC_MINT, user.publicKey),
+        userShares: getAssociatedTokenAddressSync(sharesMintPda(), user.publicKey),
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .remainingAccounts(await activeMetas())
+      .rpc();
+    const idle = await connection.getTokenAccountBalance(idlePda());
+    console.log(`deposited ${a} tUSDC (${sig}); vault idle ${idle.value.uiAmountString} tUSDC`);
+    return;
+  }
+
+  const seriesTokens = (series: PublicKey, classId: number) => {
+    const acc = seriesAccounts(series);
+    return {
+      series,
+      indexState: indexPda(classId),
+      upMint: acc.upMint,
+      downMint: acc.downMint,
+      upVault: acc.upVault,
+      downVault: acc.downVault,
+      collateral: acc.collateral,
+      collateralMint: TUSDC_MINT,
+    };
+  };
+
+  if (cmd === "seed") {
+    const payer = load("worker.json");
+    const program = clampProgram(connection, new KeypairWallet(payer));
+    const series = seriesPda(classId, kind, Number(c));
+    const sig = await program.methods
+      .seedSeries()
+      .accountsPartial({
+        config: configPda(),
+        vault: vaultPda(),
+        idle: idlePda(),
+        tokens: seriesTokens(series, classId),
+        tokenProgram: TOKEN_PROGRAM_ID,
+      } as never)
+      .remainingAccounts(await activeMetas())
+      .rpc();
+    const s = await program.account.series.fetch(series);
+    console.log(`seeded ${series.toBase58()} (${sig}): pool UP ${Number(s.poolUp.toString()) / 1e6}, DOWN ${Number(s.poolDown.toString()) / 1e6}`);
+    return;
+  }
+
+  if (cmd === "buy" || cmd === "sell") {
+    const [, , , , , sideArg, amountArg, file] = process.argv.slice(2);
+    const side = Number(sideArg);
+    const user = load(file ?? "test-user-1.json");
+    const program = clampProgram(connection, new KeypairWallet(user));
+    const series = seriesPda(classId, kind, Number(c));
+    const acc = seriesAccounts(series);
+    const claimMint = side === 0 ? acc.upMint : acc.downMint;
+    const userClaims = getAssociatedTokenAddressSync(claimMint, user.publicKey);
+    const amount = new BN(Math.round(Number(amountArg) * 1e6));
+    const cfg = await program.account.config.fetch(configPda());
+    const builder = cmd === "buy" ? program.methods.buy(side, amount, new BN(1)) : program.methods.sell(side, amount, new BN(1));
+    const sig = await builder
+      .accountsPartial({
+        user: user.publicKey,
+        config: configPda(),
+        vault: vaultPda(),
+        idle: idlePda(),
+        treasury: cfg.treasury,
+        tokens: seriesTokens(series, classId),
+        userCollateral: getAssociatedTokenAddressSync(TUSDC_MINT, user.publicKey),
+        userClaims,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      } as never)
+      .preInstructions([
+        createAssociatedTokenAccountIdempotentInstruction(user.publicKey, userClaims, user.publicKey, claimMint),
+      ])
+      .rpc();
+    const bal = await connection.getTokenAccountBalance(userClaims);
+    console.log(`${cmd} (${sig}): user holds ${bal.value.uiAmountString} ${side === 0 ? "UP" : "DOWN"}`);
+    return;
+  }
+  throw new Error("usage: series show|create|mint|merge|vault-init|deposit|seed|buy|sell ...");
 }
 
 main().catch((err) => {
