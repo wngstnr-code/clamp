@@ -158,6 +158,8 @@ Full details go in `docs/build-and-deploy.md`. Add each command to this table wh
 | Build programs, IDL and types | `anchor build` |
 | Run Rust tests (after `anchor build`) | `cargo test` |
 | Format check | `cargo fmt --all -- --check` |
+| Verifiable build (Docker running) | `solana-verify build --library-name clamp -b solanafoundation/solana-verifiable-build:4.3.0` |
+| Hash of the deployed program | `solana-verify get-program-hash -u devnet <program id>` |
 
 ## 12. Definition of done (for any task)
 

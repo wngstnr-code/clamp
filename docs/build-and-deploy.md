@@ -111,16 +111,53 @@ Upgrades: never change the layout of an account type that has live accounts. See
 
 ### Verified build (required, D-041)
 
-Not run yet. The exact commands depend on the installed tool versions, so test them in M0 with an empty program and then write the working ones here.
+Tested on 2026-11-18 with the empty `clamp` program (Apple silicon, Colima with Rosetta, image runs as linux/amd64 under emulation, about 3 minutes per program).
 
-1. Commit the code and tag the commit.
-2. Build reproducibly (the verifiable build of Anchor or `solana-verify build`, both use a pinned Docker image). On Apple silicon the image may need emulation.
-3. Deploy that exact build to devnet.
-4. Compare: the hash of the on-chain program must equal the hash of the local verifiable build (`solana-verify get-program-hash -u devnet <program id>` against `solana-verify get-executable-hash <path to .so>`).
-5. Once the repo is public, anyone can run `solana-verify verify-from-repo -u devnet --program-id <program id> <repo url> --commit-hash <commit>`. Put this command in the README.
-6. Log the commit, the program hash and the date in `progress.md` under "Devnet deployments".
+1. Commit the code (and tag it for a release deploy).
+2. Docker must run. On Wangsit's machine Docker is Colima, not Docker Desktop:
 
-Open point: whether explorers show a "verified" badge for devnet programs is not known yet (assumption A17 in `progress.md`). The requirement is met by the reproducible hash match either way.
+```
+colima start --cpu 4 --memory 8 --vm-type vz --vz-rosetta
+```
+
+3. Build reproducibly. **Always pass the base image.** Without `-b`, `solana-verify` picks the image from the `solana-program` crate version in `Cargo.lock` (3.0.1), whose Cargo 1.84 cannot build our dependencies (`edition2024`). The newest image on 2026-11-18 is 4.3.0 (container Rust 1.97.1).
+
+```
+solana-verify build --library-name clamp -b solanafoundation/solana-verifiable-build:4.3.0
+```
+
+4. Deploy exactly that file (the output in `target/deploy/` is overwritten by a plain `anchor build`, so deploy right after the verifiable build):
+
+```
+solana program deploy target/deploy/clamp.so \
+  --program-id ~/.config/solana/clamp/clamp-program-keypair.json \
+  --keypair ~/.config/solana/clamp/deployer.json \
+  --upgrade-authority ~/.config/solana/clamp/deployer.json \
+  --url devnet
+```
+
+5. Compare the hashes. They must be equal:
+
+```
+solana-verify get-executable-hash target/deploy/clamp.so
+solana-verify get-program-hash -u devnet wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC
+```
+
+6. Once the repo is public (D-046), anyone can run the check from the source (not run yet, needs the public repo):
+
+```
+solana-verify verify-from-repo -u devnet \
+  --program-id wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC \
+  https://github.com/wngstnr-code/clamp \
+  --commit-hash <commit> --library-name clamp \
+  -b solanafoundation/solana-verifiable-build:4.3.0
+```
+
+Put this command in the README. Log the commit, the program hash and the date in `progress.md` under "Devnet deployments".
+
+Note: the host build (`anchor build`) uses cargo-build-sbf 4.5.0 and gives a different binary than the Docker build. Only the Docker build is deployed.
+
+Open point: whether explorers show a "verified" badge for devnet programs is not known yet (A17). The hash match and the README command are the proof either way.
 
 ## 4. Backend
 

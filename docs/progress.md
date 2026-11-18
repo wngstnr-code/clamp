@@ -6,7 +6,7 @@ Update this file at the end of every session and after every milestone. Newest e
 
 | Item | Value |
 |---|---|
-| Phase | **M0 in progress** (started 2026-11-18 on the user's go). Steps 1 (toolchain), 2 (repo skeleton, private GitHub repo `wngstnr-code/clamp`) 3 (empty programs that build and pass tests) and 4 (devnet keypairs created) done. **Waiting for the user to fund the deployer and worker with devnet SOL.** Work goes stage by stage: after each stage, report and wait. |
+| Phase | **M0 in progress** (started 2026-11-18 on the user's go). Steps 1 (toolchain), 2 (repo skeleton, private GitHub repo `wngstnr-code/clamp`) 3 (empty programs that build and pass tests) 4 (devnet keypairs, funded) and 5 (verifiable build of the empty `clamp`, deployed to devnet, hashes match) done. Next: step 6 (Supabase). Work goes stage by stage: after each stage, report and wait. |
 | Current milestone | M0 Setup |
 | Deadline | Sunday 2026-11-29, hour not confirmed |
 | Hard dates | Index live on devnet by 2026-11-20. First weekly series created by 2026-11-21. |
@@ -23,7 +23,7 @@ Update this file at the end of every session and after every milestone. Newest e
 
 1. ~~Install the Solana CLI and Anchor~~ (done 2026-11-18: Agave 4.4.1, Anchor 1.2.2, solana-verify 0.5.2).
 2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Step 3 done: empty `clamp` and `test-usdc` programs, `Anchor.toml`, Cargo workspace. Step 4 done: deployer, worker and two test users in `~/.config/solana/clamp/` (addresses in `build-and-deploy.md` section 2). Next: the user funds deployer and worker, then the verifiable build spike (step 5, Docker must run).
-3. Try a verifiable build once with an empty program and check it against devnet (D-041, A17).
+3. ~~Try a verifiable build once with an empty program and check it against devnet~~ (done 2026-11-18, hashes match). Next: Supabase migrations (step 6), needs the user's Supabase project.
 4. Start M1 with `math/median.rs` and `math/twap.rs`, then the source rules in the SDK.
 
 ### AG (web app)
@@ -81,7 +81,7 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 | A12 | Compute use of `create_series`, `buy` with re-centering, `settle_series` and `submit_report` stays within limits | M1, M2 | Split instructions | open |
 | A15 | The installed Anchor and Solana CLI versions work together | M0 | Pin the pair the Anchor release notes name | open |
 | A16 | A zkTLS proof of the Vast.ai request can be made and checked in the browser within the free plan | Stretch (D-039) | Drop the stretch goal | open |
-| A17 | A verifiable build works on this machine (Apple silicon, Docker), the on-chain hash on devnet matches it, and `verify-from-repo` works against devnet | M0 | Build on a Linux machine or in CI. If explorers show no badge on devnet, the hash match and the README command are the proof. | open |
+| A17 | A verifiable build works on this machine (Apple silicon, Docker), the on-chain hash on devnet matches it, and `verify-from-repo` works against devnet | M0 | Build on a Linux machine or in CI. If explorers show no badge on devnet, the hash match and the README command are the proof. | partly closed 2026-11-18: the Docker build works on this machine (with `-b` image 4.3.0) and the devnet hash matches. `verify-from-repo` waits for the public repo. |
 
 ## Milestone checklist
 
@@ -136,11 +136,9 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 
 ## Devnet deployments
 
-None yet.
-
 | Thing | Address | Date |
 |---|---|---|
-| Program `clamp` | | |
+| Program `clamp` (empty M0 build, verifiable, commit `6f0c0ef`, hash `c950400bc1cb0c7018f33937fe8192247dec5b8ce0f16439898fa9f0d6470682`, upgrade authority = deployer) | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` | 2026-11-18 |
 | Program `test-usdc` | | |
 | tUSDC mint | | |
 | Config, Vault | | |
@@ -152,7 +150,9 @@ Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it
 
 ## Session log
 
-### 2026-11-18, M0 steps 1 to 4 (Wangsit)
+### 2026-11-18, M0 steps 1 to 5 (Wangsit)
+
+- Step 5: Docker runs through Colima (Rosetta). `solana-verify build` failed with its default image (3.0.1, Cargo too old) and worked with `-b solanafoundation/solana-verifiable-build:4.3.0`. Deployed the empty `clamp` to devnet; the on-chain hash equals the local hash (`c950400b...`). Balances after funding and the deploy: deployer about 15.7 SOL, worker about 2 SOL, test users 1 SOL each. The Solana CLI default keypair is now the deployer.
 
 - Step 4: created the deployer, worker and two test user keypairs (public addresses in `build-and-deploy.md`). All have 0 SOL until the user funds them.
 
