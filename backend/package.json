@@ -12,10 +12,13 @@
     "tick": "tsx --env-file=../.env src/cli.ts tick",
     "report": "tsx --env-file=../.env src/cli.ts report",
     "record": "tsx --env-file=../.env src/cli.ts record",
-    "dry-run": "tsx --env-file=../.env src/cli.ts report --dry-run"
+    "dry-run": "tsx --env-file=../.env src/cli.ts report --dry-run",
+    "setup:devnet": "tsx --env-file=../.env src/setup-devnet.ts",
+    "verify": "tsx --env-file=../.env src/cli.ts verify"
   },
   "dependencies": {
     "@clamp/sdk": "workspace:*",
+    "@solana/spl-token": "0.4.15",
     "@solana/web3.js": "1.99.0",
     "@supabase/supabase-js": "2.119.0",
     "hono": "4.13.16"
