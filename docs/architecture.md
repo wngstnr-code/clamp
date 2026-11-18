@@ -86,7 +86,10 @@ pub struct ClassConfig {
     min_price: u64, max_price: u64, max_step_ppm: u32,
     half_width_ppm: [u32; 3],       // daily, weekly, monthly
     current_series: [Pubkey; 3],    // the latest series per kind
-    bump: u8, _reserved: [u8; 64],
+    bump: u8,
+    current_expiry: [i64; 3],       // expiry of the latest series per kind, 0 = none (D-056)
+    series_count: [u32; 3],         // the next series of a kind uses this as seq (D-056)
+    _reserved: [u8; 28],            // was 64: the two fields above came from it
 }
 pub struct Source {
     source_id: u8,                  // 1 Vast.ai, 2 RunPod, 3 Akash, 4 Nosana
@@ -118,9 +121,9 @@ pub struct Report {
 pub struct Observations { items: [ObservationSlot; 2048] }
 pub struct ObservationSlot { ts: i64, price: u64, cum_price_lo: u64, cum_price_hi: u64, cum_valid: u64 }
 
-// PDA ["series", class_id, kind, start_ts]
+// PDA ["series", class_id, kind, seq (u32 LE)] (D-056). Layout final since M2 stage 3.
 pub struct Series {
-    class_id: u8, kind: u8, start_ts: i64, close_ts: i64, expiry_ts: i64,
+    class_id: u8, kind: u8, seq: u32, start_ts: i64, close_ts: i64, expiry_ts: i64,
     center: u64, lower: u64, upper: u64, start_index: u64,
     start_cum_price: u128, start_cum_valid: u64,
     trade_fee_bps: u16, protocol_share_bps: u16,
@@ -163,7 +166,7 @@ Rules for layouts: every account has reserved bytes. Never change the layout of 
 | ClassConfig | `"class"`, `class_id` (u8) |
 | IndexState | `"index"`, `class_id` |
 | Observations | not a PDA: keypair account, address stored in `IndexState.observations` (D-051) |
-| Series | `"series"`, `class_id`, `kind` (u8), `start_ts` (i64, little endian) |
+| Series | `"series"`, `class_id`, `kind` (u8), `seq` (u32, little endian) = `ClassConfig.series_count[kind]` before creation (D-056) |
 | UP mint, DOWN mint | `"up"`, series and `"down"`, series |
 | Series collateral, UP vault, DOWN vault | `"collateral"`, series and `"upv"`, series and `"downv"`, series |
 | Vault, share mint, idle USDC | `"vault"` and `"shares"` and `"idle"` |
@@ -179,12 +182,12 @@ Ids: class `1` = RTX 4090, `2` = H100. Kind `0` = daily, `1` = weekly, `2` = mon
 | `set_class(class_id, params)` | admin | 6, 13 | Creates or updates a ClassConfig (reporters, quorum, bounds, widths). The sources are fixed when the class is created (D-052). Affects future updates and future series only. Limits: 1 to 5 distinct reporters, `1 <= min_reporters <= reporters`, 1 to 6 distinct sources, fixed weight 1 or 2, `max_step_ppm` 1 to 500,000, half widths 1 to 900,000 ppm. |
 | `init_index(class_id)` | admin | 6.3 | Creates IndexState and binds the pre-created Observations account (must be all zero, owned by the program, exactly 81,928 bytes) |
 | `submit_report(class_id, prices: [u64; 6], capacities: [u32; 6], raw_hashes: [[u8; 32]; 6])` | a registered reporter | 6.2, 6.3 | Stores the report, then updates the index when the quorum and the interval allow it. Slots beyond the class's source count must be 0, and a price above 0 needs a non-zero raw hash (`MissingRawHash`, D-055). The update waits for every registered reporter, at most `REPORT_WAIT` = 600 s after the oldest fresh report. About 15,000 compute units with an update. |
-| `create_series(class_id, kind)` | anyone | 7.1 | Creates the series, its two mints and three token accounts |
+| `create_series(class_id, kind)` | anyone | 7.1 | Creates the series, its two mints (authority: the series PDA, 6 decimals, no freeze authority) and three token accounts; the caller pays the rent. Fails with `SeriesStillLive`, `IndexStale` (no update within `MAX_GAP`), `NotEnoughHistory` (under 6 h counted in the center window; a history shorter than 72 h starts the window at the oldest observation), `InvalidKind`. About 66,000 compute units. |
 | `seed_series()` | anyone, once | 9.2 | Moves the allocation from the vault and re-centers |
-| `mint_pairs(amount)` / `merge_pairs(amount)` | user | 7.2 | |
+| `mint_pairs(amount)` / `merge_pairs(amount)` | user | 7.2 | Accounts: user, series, both mints, the series collateral, the collateral mint, the user's collateral account, the user's UP and DOWN ATAs (created if needed). Until settlement. |
 | `buy(side, usdc_in, min_out)` / `sell(side, amount, min_usdc_out)` | user | 8.3, 8.4 | Re-centers first when the index has a newer observation |
-| `settle_series()` | anyone | 11 | |
-| `redeem(side, amount)` | holder | 11 | |
+| `settle_series()` | anyone | 11 | Accounts: series, the class IndexState and Observations. |
+| `redeem(side, amount)` | holder | 11 | `side` 0 UP, 1 DOWN; the claim mint must match the side. |
 | `deposit(amount)` / `withdraw(shares)` | user | 9.2 | Remaining accounts: every active series and its IndexState |
 | `sweep_series()` | anyone | 9.2 | |
 | `open_lock(...)` / `close_lock(min_usdc_out)` / `withdraw_lock_claims()` / `set_auto_roll(on)` | owner | 10.4 | |
