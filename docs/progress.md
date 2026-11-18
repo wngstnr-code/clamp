@@ -161,7 +161,9 @@ Checked: `anchor build`, 52 Rust tests, 60 SDK tests, 13 backend tests, clippy w
 
 | Thing | Address | Date |
 |---|---|---|
-| Program `clamp` (M2 stage 3: index, series, pairs, settlement, redeem; verifiable build of commit `368e918`, hash `b5ead3d97cde4a5e326ca895212bf58914a243ee2322d9ed10b7645c9fb71a3b`, 548 KB, upgrade authority = deployer) | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` | 2026-11-18 |
+| Program `clamp` (M2 stage 4: index, series, pairs, settlement, redeem, vault, pool; verifiable build of commit `6773a9a`, hash `a6caee7354853f1b1a479478e3a6e2482075965bab1e1a703fbd0f83abceca31`, 682 KB, upgrade authority = deployer) | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` | 2026-11-18 |
+| Earlier `clamp` build (M2 stage 3, commit `368e918`, hash `b5ead3d9...`) | same address, replaced | 2026-11-18 |
+| Vault (`init_vault` 2026-11-18; first deposits: test user 2 and the deployer, 1,000 tUSDC each from the faucet) | `8bCLgMS6Uj2y43dzBzHMxSZwMbg3xYzjpbDwJJif95LS` | 2026-11-18 |
 | Earlier `clamp` build (M1 index with D-055, commit `188da50`, hash `08b4d170...`) | same address, replaced | 2026-11-18 |
 | Earlier `clamp` build (M1 index before D-055, commit `677f254`, hash `0e65886c...`) | same address, replaced | 2026-11-18 |
 | Earlier `clamp` build (empty M0 program, commit `6f0c0ef`, hash `c950400b...`) | same address, replaced | 2026-11-18 |
