@@ -128,8 +128,8 @@ Checked: `anchor build`, 52 Rust tests, 60 SDK tests, 13 backend tests, clippy w
 
 | Finding | Severity | Fix |
 |---|---|---|
-| With exactly two fresh reports, the median per source is their average, so one wrong reporter moves every source halfway to its own number (bounded by the sanity bounds and the 10% step limit per update, but it can drift over many updates). With the schedules at :00, :05 and :10, most updates form from two reports. | medium | Open, needs a decision (spec 6.2 change): wait for all registered reporters up to a time limit, so a normal update has three reports. |
-| A report can carry a price without a raw hash, which leaves no public evidence for that price. | medium | Open, needs a decision (spec 6.2 change): refuse a price above 0 without a hash. Our reporters already always send one. |
+| With exactly two fresh reports, the median per source is their average, so one wrong reporter moves every source halfway to its own number (bounded by the sanity bounds and the 10% step limit per update, but it can drift over many updates). With the schedules at :00, :05 and :10, most updates form from two reports. | medium | Fixed (D-055): an update waits for every registered reporter, at most `REPORT_WAIT` (600 s). Test: one liar among three cannot move the median. |
+| A report can carry a price without a raw hash, which leaves no public evidence for that price. | medium | Fixed (D-055): `MissingRawHash`. |
 | The record step reads only the last 100 transactions per class (about 8 hours at 12 a hour). After a longer backend outage, history between is missing in Supabase (it stays on-chain). | low | Known issue. A backfill command can be added if it happens. |
 | The SDK carries only the `clamp` IDL; the web faucet page will need the `test_usdc` IDL. | low | Add with the M2 SDK work. |
 | The env table in `architecture.md` did not list the reporter variables. | low | Fixed: `REPORTER_KEYPAIR`, `ARCHIVE_URL`. |
@@ -160,7 +160,8 @@ Checked: `anchor build`, 52 Rust tests, 60 SDK tests, 13 backend tests, clippy w
 
 | Thing | Address | Date |
 |---|---|---|
-| Program `clamp` (M1 index, verifiable build of commit `677f254`, hash `0e65886cea8b90e9ee67e5c270046cc70d158dfb92cb05b9f717d7f47528a8af`, upgrade authority = deployer) | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` | 2026-11-18 |
+| Program `clamp` (M1 index with D-055, verifiable build of commit `188da50`, hash `08b4d17073a5eac67badd13e7d6c3b7fb9d28f27494e73b46b0608cd0e31da29`, upgrade authority = deployer) | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` | 2026-11-18 |
+| Earlier `clamp` build (M1 index before D-055, commit `677f254`, hash `0e65886c...`) | same address, replaced | 2026-11-18 |
 | Earlier `clamp` build (empty M0 program, commit `6f0c0ef`, hash `c950400b...`) | same address, replaced | 2026-11-18 |
 | Program `test-usdc` (faucet, verifiable build of commit `efafcfe`, hash `446337791a2755bb8d288a5ce732b1c1255ead6299cb54c6f6c913430d263ed1`, upgrade authority = deployer) | `5QZihvTBjqZkmbX2gFcQjqnNBBq1AB3W8nRD2VeVUZLP` | 2026-11-18 |
 | tUSDC mint (6 decimals, mint authority = faucet PDA `HcnHqG55R4QGgixq6m8hWgB6oERnvVX7qzUDuxdZsx7X` since 2026-11-18, no freeze authority) | `7Cy32ram7nmVKVzty5Bw1Px3t9Dp2cTjXC1PmbEJdt4L` | 2026-11-18 |
@@ -176,6 +177,10 @@ Checked: `anchor build`, 52 Rust tests, 60 SDK tests, 13 backend tests, clippy w
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-18, D-055 (Wangsit)
+
+- The user approved both review fixes. Spec 6.2 and 6.4 updated (`REPORT_WAIT` 600 s), `submit_report` waits for every registered reporter up to `REPORT_WAIT` and refuses a price without a raw hash (`MissingRawHash`, appended at the end of the error enum so earlier codes stay). 4 new tests (17 index tests). SDK IDL synced, `REPORT_WAIT` added. Verifiable redeploy: commit `188da50`, hash `08b4d170...`.
 
 ### 2026-11-18, quorum 2 and M2 stage 1 (Wangsit)
 
