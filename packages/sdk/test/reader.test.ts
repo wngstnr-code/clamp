@@ -86,3 +86,13 @@ describe("PDAs", () => {
     expect(classPda(1).equals(classPda(2))).toBe(false);
   });
 });
+
+describe("series PDAs", () => {
+  it("derive from the documented seeds", async () => {
+    const { seriesPda, seriesAccounts } = await import("../src/pda.js");
+    const find = (seeds: Uint8Array[]) => PublicKey.findProgramAddressSync(seeds, CLAMP_PROGRAM_ID)[0];
+    const s = seriesPda(1, 1, 3);
+    expect(s.equals(find([Buffer.from("series"), Uint8Array.of(1), Uint8Array.of(1), Uint8Array.of(3, 0, 0, 0)]))).toBe(true);
+    expect(seriesAccounts(s).collateral.equals(find([Buffer.from("collateral"), s.toBuffer()]))).toBe(true);
+  });
+});

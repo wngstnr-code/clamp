@@ -14,6 +14,193 @@ export type Clamp = {
   },
   "instructions": [
     {
+      "name": "createSeries",
+      "docs": [
+        "Creates the next series of a class and kind. Anyone, after the previous one expired."
+      ],
+      "discriminator": [
+        181,
+        9,
+        52,
+        120,
+        197,
+        221,
+        42,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "classConfig",
+          "writable": true
+        },
+        {
+          "name": "indexState"
+        },
+        {
+          "name": "observations",
+          "relations": [
+            "indexState"
+          ]
+        },
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "collateralMint"
+        },
+        {
+          "name": "upMint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "downMint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  111,
+                  119,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  108,
+                  108,
+                  97,
+                  116,
+                  101,
+                  114,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "upVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  112,
+                  118
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "downVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  111,
+                  119,
+                  110,
+                  118
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "classId",
+          "type": "u8"
+        },
+        {
+          "name": "kind",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "initIndex",
       "docs": [
         "Creates the index of a class and binds its observation ring. Admin only."
@@ -152,6 +339,441 @@ export type Clamp = {
       ]
     },
     {
+      "name": "mergePairs",
+      "docs": [
+        "Returns `amount` UP and `amount` DOWN, receives `amount` collateral."
+      ],
+      "discriminator": [
+        134,
+        107,
+        200,
+        162,
+        165,
+        236,
+        228,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "upMint",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "downMint",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "collateral",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "collateralMint"
+        },
+        {
+          "name": "userCollateral",
+          "writable": true
+        },
+        {
+          "name": "userUp",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "upMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "userDown",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "downMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "mintPairs",
+      "docs": [
+        "Pays `amount` collateral, receives `amount` UP and `amount` DOWN."
+      ],
+      "discriminator": [
+        63,
+        216,
+        104,
+        77,
+        215,
+        189,
+        83,
+        81
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "upMint",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "downMint",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "collateral",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "collateralMint"
+        },
+        {
+          "name": "userCollateral",
+          "writable": true
+        },
+        {
+          "name": "userUp",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "upMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "userDown",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "downMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "redeem",
+      "docs": [
+        "Burns settled claims of one side for their value in collateral."
+      ],
+      "discriminator": [
+        184,
+        12,
+        86,
+        149,
+        70,
+        196,
+        97,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "series"
+        },
+        {
+          "name": "claimMint",
+          "docs": [
+            "The UP or DOWN mint of the series, matching `side`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "userClaims",
+          "writable": true
+        },
+        {
+          "name": "collateral",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "collateralMint"
+        },
+        {
+          "name": "userCollateral",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "side",
+          "type": "u8"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "setClass",
       "docs": [
         "Creates or updates a GPU class. Admin only."
@@ -216,6 +838,38 @@ export type Clamp = {
           }
         }
       ]
+    },
+    {
+      "name": "settleSeries",
+      "docs": [
+        "Settles an expired series from the index period average. Anyone."
+      ],
+      "discriminator": [
+        117,
+        139,
+        23,
+        250,
+        111,
+        55,
+        22,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "indexState"
+        },
+        {
+          "name": "observations",
+          "relations": [
+            "indexState"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "submitReport",
@@ -344,6 +998,19 @@ export type Clamp = {
         178,
         203
       ]
+    },
+    {
+      "name": "series",
+      "discriminator": [
+        240,
+        97,
+        8,
+        183,
+        139,
+        77,
+        250,
+        162
+      ]
     }
   ],
   "events": [
@@ -361,6 +1028,45 @@ export type Clamp = {
       ]
     },
     {
+      "name": "pairsMerged",
+      "discriminator": [
+        71,
+        8,
+        73,
+        137,
+        168,
+        67,
+        61,
+        39
+      ]
+    },
+    {
+      "name": "pairsMinted",
+      "discriminator": [
+        108,
+        154,
+        184,
+        215,
+        50,
+        138,
+        35,
+        141
+      ]
+    },
+    {
+      "name": "redeemed",
+      "discriminator": [
+        14,
+        29,
+        183,
+        71,
+        31,
+        165,
+        107,
+        38
+      ]
+    },
+    {
       "name": "reportSubmitted",
       "discriminator": [
         30,
@@ -371,6 +1077,32 @@ export type Clamp = {
         40,
         129,
         244
+      ]
+    },
+    {
+      "name": "seriesCreated",
+      "discriminator": [
+        2,
+        164,
+        54,
+        38,
+        24,
+        181,
+        233,
+        180
+      ]
+    },
+    {
+      "name": "seriesSettled",
+      "discriminator": [
+        119,
+        185,
+        208,
+        158,
+        40,
+        59,
+        197,
+        235
       ]
     }
   ],
@@ -434,6 +1166,66 @@ export type Clamp = {
       "code": 6011,
       "name": "missingRawHash",
       "msg": "A price above 0 needs the hash of its raw API answer"
+    },
+    {
+      "code": 6012,
+      "name": "invalidKind",
+      "msg": "Series kind must be 0 (daily), 1 (weekly) or 2 (monthly)"
+    },
+    {
+      "code": 6013,
+      "name": "seriesStillLive",
+      "msg": "The current series of this class and kind has not expired yet"
+    },
+    {
+      "code": 6014,
+      "name": "indexStale",
+      "msg": "The index has no update within MAX_GAP"
+    },
+    {
+      "code": 6015,
+      "name": "notEnoughHistory",
+      "msg": "Less than 6 hours of index history in the center window"
+    },
+    {
+      "code": 6016,
+      "name": "invalidBand",
+      "msg": "The band is empty"
+    },
+    {
+      "code": 6017,
+      "name": "wrongMint",
+      "msg": "Wrong mint for this series"
+    },
+    {
+      "code": 6018,
+      "name": "wrongTokenAccount",
+      "msg": "Wrong token account for this series"
+    },
+    {
+      "code": 6019,
+      "name": "zeroAmount",
+      "msg": "Amount must be above 0"
+    },
+    {
+      "code": 6020,
+      "name": "seriesSettled",
+      "msg": "The series is already settled"
+    },
+    {
+      "code": 6021,
+      "name": "notExpired",
+      "msg": "The series has not expired yet"
+    },
+    {
+      "code": 6022,
+      "name": "notSettled",
+      "msg": "The series is not settled yet"
+    },
+    {
+      "code": 6023,
+      "name": "invalidSide",
+      "msg": "Side must be 0 (UP) or 1 (DOWN)"
     }
   ],
   "types": [
@@ -541,7 +1333,7 @@ export type Clamp = {
           {
             "name": "currentSeries",
             "docs": [
-              "The latest series per kind (set from M2 on)."
+              "The latest series per kind (set by create_series)."
             ],
             "type": {
               "array": [
@@ -555,11 +1347,37 @@ export type Clamp = {
             "type": "u8"
           },
           {
+            "name": "currentExpiry",
+            "docs": [
+              "Expiry of the latest series per kind; 0 = none yet. Taken from the",
+              "reserved bytes in M2 (D-056), so existing accounts read 0."
+            ],
+            "type": {
+              "array": [
+                "i64",
+                3
+              ]
+            }
+          },
+          {
+            "name": "seriesCount",
+            "docs": [
+              "Series created so far per kind; the next series uses this number in its",
+              "PDA seeds (D-056)."
+            ],
+            "type": {
+              "array": [
+                "u32",
+                3
+              ]
+            }
+          },
+          {
             "name": "reserved",
             "type": {
               "array": [
                 "u8",
-                64
+                28
               ]
             }
           }
@@ -946,6 +1764,74 @@ export type Clamp = {
       }
     },
     {
+      "name": "pairsMerged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pairsMinted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "redeemed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": "u8"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "report",
       "docs": [
         "The latest report of one reporter slot."
@@ -1052,6 +1938,277 @@ export type Clamp = {
                 6
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "series",
+      "docs": [
+        "One series of a class and kind (spec 7). PDA",
+        "`[\"series\", class_id, kind, seq (u32 LE)]`, `seq` = the class's",
+        "`series_count[kind]` at creation (D-056).",
+        "",
+        "The layout is final from M2 on (architecture 3.1): the pool and vault",
+        "fields are here from the start, so a live weekly series survives the M2",
+        "pool work. New fields go into `_reserved`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "classId",
+            "type": "u8"
+          },
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "seq",
+            "type": "u32"
+          },
+          {
+            "name": "startTs",
+            "type": "i64"
+          },
+          {
+            "name": "closeTs",
+            "type": "i64"
+          },
+          {
+            "name": "expiryTs",
+            "type": "i64"
+          },
+          {
+            "name": "center",
+            "docs": [
+              "Band, micro-USD per GPU-hour."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lower",
+            "type": "u64"
+          },
+          {
+            "name": "upper",
+            "type": "u64"
+          },
+          {
+            "name": "startIndex",
+            "docs": [
+              "Index price at creation (used when the period has no counted time)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "startCumPrice",
+            "docs": [
+              "Running sums of the class index at `start_ts`."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "startCumValid",
+            "type": "u64"
+          },
+          {
+            "name": "tradeFeeBps",
+            "type": "u16"
+          },
+          {
+            "name": "protocolShareBps",
+            "type": "u16"
+          },
+          {
+            "name": "upMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "downMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral",
+            "docs": [
+              "Collateral token account of the series (owner: the series PDA)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "upVault",
+            "docs": [
+              "Vault-owned UP and DOWN units (pool plus inventory), owner: the series PDA."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "downVault",
+            "type": "pubkey"
+          },
+          {
+            "name": "pairsOutstanding",
+            "docs": [
+              "Pairs minted and not merged yet, including the vault's."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "poolUp",
+            "type": "u64"
+          },
+          {
+            "name": "poolDown",
+            "type": "u64"
+          },
+          {
+            "name": "invUp",
+            "type": "u64"
+          },
+          {
+            "name": "invDown",
+            "type": "u64"
+          },
+          {
+            "name": "lastRecenterTs",
+            "type": "i64"
+          },
+          {
+            "name": "seeded",
+            "type": "bool"
+          },
+          {
+            "name": "settled",
+            "type": "bool"
+          },
+          {
+            "name": "avg",
+            "docs": [
+              "Period average, micro-USD per GPU-hour."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "upValue",
+            "docs": [
+              "Value of one UP claim in micro-USDC (ppm of 1 USDC)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "coveragePpm",
+            "docs": [
+              "Counted time of the period in ppm of its duration."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "settledTs",
+            "type": "i64"
+          },
+          {
+            "name": "swept",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "seriesCreated",
+      "docs": [
+        "A series was created (spec 7.1)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "classId",
+            "type": "u8"
+          },
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "seq",
+            "type": "u32"
+          },
+          {
+            "name": "startTs",
+            "type": "i64"
+          },
+          {
+            "name": "closeTs",
+            "type": "i64"
+          },
+          {
+            "name": "expiryTs",
+            "type": "i64"
+          },
+          {
+            "name": "center",
+            "type": "u64"
+          },
+          {
+            "name": "lower",
+            "type": "u64"
+          },
+          {
+            "name": "upper",
+            "type": "u64"
+          },
+          {
+            "name": "startIndex",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "seriesSettled",
+      "docs": [
+        "A series was settled (spec 11)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "avg",
+            "type": "u64"
+          },
+          {
+            "name": "upValue",
+            "type": "u32"
+          },
+          {
+            "name": "coveragePpm",
+            "type": "u32"
+          },
+          {
+            "name": "settledTs",
+            "type": "i64"
           }
         ]
       }

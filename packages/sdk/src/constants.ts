@@ -17,6 +17,16 @@ export const MAX_SOURCES = 6;
 export const PPM = 1_000_000n;
 export const MICRO = 1_000_000;
 
+/** Series kinds and durations (spec 7.1). */
+export const KIND_DAILY = 0;
+export const KIND_WEEKLY = 1;
+export const KIND_MONTHLY = 2;
+export const DURATIONS = [86_400, 604_800, 2_592_000] as const;
+export const SIDE_UP = 0;
+export const SIDE_DOWN = 1;
+/** The devnet test USDC mint (6 decimals, minted by the faucet). */
+export const TUSDC_MINT = new PublicKey("7Cy32ram7nmVKVzty5Bw1Px3t9Dp2cTjXC1PmbEJdt4L");
+
 export const CLASS_RTX4090 = 1;
 export const CLASS_H100 = 2;
 

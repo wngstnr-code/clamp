@@ -7,7 +7,7 @@
   },
   "scripts": {
     "check:dashes": "node scripts/check-dashes.mjs",
-    "idl:sync": "cp target/idl/clamp.json packages/sdk/src/idl/clamp.json && cp target/types/clamp.ts packages/sdk/src/idl/clamp.ts",
+    "idl:sync": "cp target/idl/clamp.json target/idl/test_usdc.json packages/sdk/src/idl/ && cp target/types/clamp.ts target/types/test_usdc.ts packages/sdk/src/idl/",
     "test:sdk": "pnpm --filter @clamp/sdk test",
     "build:sdk": "pnpm --filter @clamp/sdk build"
   },

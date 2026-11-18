@@ -8,6 +8,193 @@
   },
   "instructions": [
     {
+      "name": "create_series",
+      "docs": [
+        "Creates the next series of a class and kind. Anyone, after the previous one expired."
+      ],
+      "discriminator": [
+        181,
+        9,
+        52,
+        120,
+        197,
+        221,
+        42,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "class_config",
+          "writable": true
+        },
+        {
+          "name": "index_state"
+        },
+        {
+          "name": "observations",
+          "relations": [
+            "index_state"
+          ]
+        },
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "up_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "down_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  111,
+                  119,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  108,
+                  108,
+                  97,
+                  116,
+                  101,
+                  114,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "up_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  112,
+                  118
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "down_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  111,
+                  119,
+                  110,
+                  118
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "class_id",
+          "type": "u8"
+        },
+        {
+          "name": "kind",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "init_index",
       "docs": [
         "Creates the index of a class and binds its observation ring. Admin only."
@@ -146,6 +333,441 @@
       ]
     },
     {
+      "name": "merge_pairs",
+      "docs": [
+        "Returns `amount` UP and `amount` DOWN, receives `amount` collateral."
+      ],
+      "discriminator": [
+        134,
+        107,
+        200,
+        162,
+        165,
+        236,
+        228,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "up_mint",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "down_mint",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "collateral",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "user_up",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "up_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "user_down",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "down_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "mint_pairs",
+      "docs": [
+        "Pays `amount` collateral, receives `amount` UP and `amount` DOWN."
+      ],
+      "discriminator": [
+        63,
+        216,
+        104,
+        77,
+        215,
+        189,
+        83,
+        81
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "up_mint",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "down_mint",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "collateral",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "user_up",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "up_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "user_down",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "down_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "redeem",
+      "docs": [
+        "Burns settled claims of one side for their value in collateral."
+      ],
+      "discriminator": [
+        184,
+        12,
+        86,
+        149,
+        70,
+        196,
+        97,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "series"
+        },
+        {
+          "name": "claim_mint",
+          "docs": [
+            "The UP or DOWN mint of the series, matching `side`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "user_claims",
+          "writable": true
+        },
+        {
+          "name": "collateral",
+          "writable": true,
+          "relations": [
+            "series"
+          ]
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "side",
+          "type": "u8"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "set_class",
       "docs": [
         "Creates or updates a GPU class. Admin only."
@@ -210,6 +832,38 @@
           }
         }
       ]
+    },
+    {
+      "name": "settle_series",
+      "docs": [
+        "Settles an expired series from the index period average. Anyone."
+      ],
+      "discriminator": [
+        117,
+        139,
+        23,
+        250,
+        111,
+        55,
+        22,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "series",
+          "writable": true
+        },
+        {
+          "name": "index_state"
+        },
+        {
+          "name": "observations",
+          "relations": [
+            "index_state"
+          ]
+        }
+      ],
+      "args": []
     },
     {
       "name": "submit_report",
@@ -338,6 +992,19 @@
         178,
         203
       ]
+    },
+    {
+      "name": "Series",
+      "discriminator": [
+        240,
+        97,
+        8,
+        183,
+        139,
+        77,
+        250,
+        162
+      ]
     }
   ],
   "events": [
@@ -355,6 +1022,45 @@
       ]
     },
     {
+      "name": "PairsMerged",
+      "discriminator": [
+        71,
+        8,
+        73,
+        137,
+        168,
+        67,
+        61,
+        39
+      ]
+    },
+    {
+      "name": "PairsMinted",
+      "discriminator": [
+        108,
+        154,
+        184,
+        215,
+        50,
+        138,
+        35,
+        141
+      ]
+    },
+    {
+      "name": "Redeemed",
+      "discriminator": [
+        14,
+        29,
+        183,
+        71,
+        31,
+        165,
+        107,
+        38
+      ]
+    },
+    {
       "name": "ReportSubmitted",
       "discriminator": [
         30,
@@ -365,6 +1071,32 @@
         40,
         129,
         244
+      ]
+    },
+    {
+      "name": "SeriesCreated",
+      "discriminator": [
+        2,
+        164,
+        54,
+        38,
+        24,
+        181,
+        233,
+        180
+      ]
+    },
+    {
+      "name": "SeriesSettled",
+      "discriminator": [
+        119,
+        185,
+        208,
+        158,
+        40,
+        59,
+        197,
+        235
       ]
     }
   ],
@@ -428,6 +1160,66 @@
       "code": 6011,
       "name": "MissingRawHash",
       "msg": "A price above 0 needs the hash of its raw API answer"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidKind",
+      "msg": "Series kind must be 0 (daily), 1 (weekly) or 2 (monthly)"
+    },
+    {
+      "code": 6013,
+      "name": "SeriesStillLive",
+      "msg": "The current series of this class and kind has not expired yet"
+    },
+    {
+      "code": 6014,
+      "name": "IndexStale",
+      "msg": "The index has no update within MAX_GAP"
+    },
+    {
+      "code": 6015,
+      "name": "NotEnoughHistory",
+      "msg": "Less than 6 hours of index history in the center window"
+    },
+    {
+      "code": 6016,
+      "name": "InvalidBand",
+      "msg": "The band is empty"
+    },
+    {
+      "code": 6017,
+      "name": "WrongMint",
+      "msg": "Wrong mint for this series"
+    },
+    {
+      "code": 6018,
+      "name": "WrongTokenAccount",
+      "msg": "Wrong token account for this series"
+    },
+    {
+      "code": 6019,
+      "name": "ZeroAmount",
+      "msg": "Amount must be above 0"
+    },
+    {
+      "code": 6020,
+      "name": "SeriesSettled",
+      "msg": "The series is already settled"
+    },
+    {
+      "code": 6021,
+      "name": "NotExpired",
+      "msg": "The series has not expired yet"
+    },
+    {
+      "code": 6022,
+      "name": "NotSettled",
+      "msg": "The series is not settled yet"
+    },
+    {
+      "code": 6023,
+      "name": "InvalidSide",
+      "msg": "Side must be 0 (UP) or 1 (DOWN)"
     }
   ],
   "types": [
@@ -535,7 +1327,7 @@
           {
             "name": "current_series",
             "docs": [
-              "The latest series per kind (set from M2 on)."
+              "The latest series per kind (set by create_series)."
             ],
             "type": {
               "array": [
@@ -549,11 +1341,37 @@
             "type": "u8"
           },
           {
+            "name": "current_expiry",
+            "docs": [
+              "Expiry of the latest series per kind; 0 = none yet. Taken from the",
+              "reserved bytes in M2 (D-056), so existing accounts read 0."
+            ],
+            "type": {
+              "array": [
+                "i64",
+                3
+              ]
+            }
+          },
+          {
+            "name": "series_count",
+            "docs": [
+              "Series created so far per kind; the next series uses this number in its",
+              "PDA seeds (D-056)."
+            ],
+            "type": {
+              "array": [
+                "u32",
+                3
+              ]
+            }
+          },
+          {
             "name": "_reserved",
             "type": {
               "array": [
                 "u8",
-                64
+                28
               ]
             }
           }
@@ -940,6 +1758,74 @@
       }
     },
     {
+      "name": "PairsMerged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PairsMinted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Redeemed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": "u8"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "Report",
       "docs": [
         "The latest report of one reporter slot."
@@ -1046,6 +1932,277 @@
                 6
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Series",
+      "docs": [
+        "One series of a class and kind (spec 7). PDA",
+        "`[\"series\", class_id, kind, seq (u32 LE)]`, `seq` = the class's",
+        "`series_count[kind]` at creation (D-056).",
+        "",
+        "The layout is final from M2 on (architecture 3.1): the pool and vault",
+        "fields are here from the start, so a live weekly series survives the M2",
+        "pool work. New fields go into `_reserved`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "class_id",
+            "type": "u8"
+          },
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "seq",
+            "type": "u32"
+          },
+          {
+            "name": "start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "expiry_ts",
+            "type": "i64"
+          },
+          {
+            "name": "center",
+            "docs": [
+              "Band, micro-USD per GPU-hour."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lower",
+            "type": "u64"
+          },
+          {
+            "name": "upper",
+            "type": "u64"
+          },
+          {
+            "name": "start_index",
+            "docs": [
+              "Index price at creation (used when the period has no counted time)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "start_cum_price",
+            "docs": [
+              "Running sums of the class index at `start_ts`."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "start_cum_valid",
+            "type": "u64"
+          },
+          {
+            "name": "trade_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "protocol_share_bps",
+            "type": "u16"
+          },
+          {
+            "name": "up_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "down_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral",
+            "docs": [
+              "Collateral token account of the series (owner: the series PDA)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "up_vault",
+            "docs": [
+              "Vault-owned UP and DOWN units (pool plus inventory), owner: the series PDA."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "down_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "pairs_outstanding",
+            "docs": [
+              "Pairs minted and not merged yet, including the vault's."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "pool_up",
+            "type": "u64"
+          },
+          {
+            "name": "pool_down",
+            "type": "u64"
+          },
+          {
+            "name": "inv_up",
+            "type": "u64"
+          },
+          {
+            "name": "inv_down",
+            "type": "u64"
+          },
+          {
+            "name": "last_recenter_ts",
+            "type": "i64"
+          },
+          {
+            "name": "seeded",
+            "type": "bool"
+          },
+          {
+            "name": "settled",
+            "type": "bool"
+          },
+          {
+            "name": "avg",
+            "docs": [
+              "Period average, micro-USD per GPU-hour."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "up_value",
+            "docs": [
+              "Value of one UP claim in micro-USDC (ppm of 1 USDC)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "coverage_ppm",
+            "docs": [
+              "Counted time of the period in ppm of its duration."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "settled_ts",
+            "type": "i64"
+          },
+          {
+            "name": "swept",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeriesCreated",
+      "docs": [
+        "A series was created (spec 7.1)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "class_id",
+            "type": "u8"
+          },
+          {
+            "name": "kind",
+            "type": "u8"
+          },
+          {
+            "name": "seq",
+            "type": "u32"
+          },
+          {
+            "name": "start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "expiry_ts",
+            "type": "i64"
+          },
+          {
+            "name": "center",
+            "type": "u64"
+          },
+          {
+            "name": "lower",
+            "type": "u64"
+          },
+          {
+            "name": "upper",
+            "type": "u64"
+          },
+          {
+            "name": "start_index",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeriesSettled",
+      "docs": [
+        "A series was settled (spec 11)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "avg",
+            "type": "u64"
+          },
+          {
+            "name": "up_value",
+            "type": "u32"
+          },
+          {
+            "name": "coverage_ppm",
+            "type": "u32"
+          },
+          {
+            "name": "settled_ts",
+            "type": "i64"
           }
         ]
       }
