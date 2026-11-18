@@ -69,7 +69,7 @@ Notes:
 | Can Pyth or RedStone replace it? | Not for us. No GPU rental price feed was found, and neither lets a user define a feed from any API. |
 | Is zkTLS a replacement? | Not for every report. The free plan of the provider we looked at allows 100 fetches a month, the first paid plan costs $2,000 a month, and we would need about 20,000 fetches a month for one reporter. Fine for a daily spot check (D-039). |
 | What replaces it? | Our own reporters (D-036). |
-| Latest versions | `anchor-lang` 1.2.2 (TypeScript client `@anchor-lang/core` 1.2.2, built on `@solana/web3.js` 1.x), Agave v4.4.1, `litesvm` 0.18.2, Next.js 16.4.6, `@supabase/supabase-js` 2.119.0 |
+| Latest versions | `anchor-lang` 1.2.2 (TypeScript client `@anchor-lang/core` 1.2.2, built on `@solana/web3.js` 1.x), Agave v4.4.1, `litesvm` 0.18.2 (we pin 0.15.0, see `build-and-deploy.md` section 3), Next.js 16.4.6, `@supabase/supabase-js` 2.119.0 |
 | Can the scheduler call our worker? | Supabase Cron runs jobs from every second to once a year and can make HTTP requests (its docs). |
 | Is the name free? | `clamp.finance` is a live crypto accounting product named Clamp. `clamp.xyz` is parked for sale. `useclamp.com` and `useclamp.xyz` are registered. No DNS records on 2026-11-17 for `clamp.markets`, `clamp.fi`, `clamp.so`, `clamp.trade`, `getclamp.xyz`, `clampindex.xyz`, `clamp.fyi` (no record is a hint, not proof that a name is free). |
 | Exact submission hour | Not on the official site or FAQ. A third-party list says 2026-11-29 23:59 "anywhere on earth". Not confirmed. |

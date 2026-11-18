@@ -47,18 +47,42 @@ AG needs Node and pnpm for the web app. AG needs the Solana CLI only to make a d
 
 ## 3. Programs
 
-All not run yet. Adjust to the installed Anchor version.
+Program ids (keypairs kept outside the repo in `~/.config/solana/clamp/`, never committed):
+
+| Program | Id |
+|---|---|
+| `clamp` | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` |
+| `test_usdc` | `5QZihvTBjqZkmbX2gFcQjqnNBBq1AB3W8nRD2VeVUZLP` |
+
+Before the first build on a fresh clone, copy the program keypairs into `target/deploy/` so Anchor keeps the same ids (only the person who deploys needs them):
 
 ```
-# build both programs
+mkdir -p target/deploy
+cp ~/.config/solana/clamp/clamp-program-keypair.json target/deploy/clamp-keypair.json
+cp ~/.config/solana/clamp/test_usdc-program-keypair.json target/deploy/test_usdc-keypair.json
+```
+
+Run on 2026-11-18:
+
+```
+# build both programs, the IDL (target/idl) and the TS types (target/types)
 anchor build
 
-# unit tests of the pure math and instruction tests
+# unit tests and LiteSVM instruction tests (needs the .so files from anchor build)
 cargo test
 
+# format check
+cargo fmt --all -- --check
+```
+
+Not run yet:
+
+```
 # deploy to devnet
 anchor deploy --provider.cluster devnet
 ```
+
+Dependency note: LiteSVM is pinned to 0.15.0 with the `Cargo.lock` from the Anchor 1.2.2 template. Newer LiteSVM pulls Agave 4.4.1 crates that need rustc 1.98.1, and the host toolchain is 1.96.0. Do not run a blanket `cargo update`. The Solana CLI on Wangsit's machine points to devnet (`solana config set --url devnet`).
 
 Deploy order on devnet:
 

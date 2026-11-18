@@ -155,6 +155,9 @@ Full details go in `docs/build-and-deploy.md`. Add each command to this table wh
 | Task | Command |
 |---|---|
 | Check for dashes | `node scripts/check-dashes.mjs` |
+| Build programs, IDL and types | `anchor build` |
+| Run Rust tests (after `anchor build`) | `cargo test` |
+| Format check | `cargo fmt --all -- --check` |
 
 ## 12. Definition of done (for any task)
 

@@ -6,7 +6,7 @@ Update this file at the end of every session and after every milestone. Newest e
 
 | Item | Value |
 |---|---|
-| Phase | **M0 in progress** (started 2026-11-18 on the user's go). Steps 1 (toolchain) and 2 (repo skeleton, private GitHub repo `wngstnr-code/clamp`) done. Work goes stage by stage: after each stage, report and wait. |
+| Phase | **M0 in progress** (started 2026-11-18 on the user's go). Steps 1 (toolchain), 2 (repo skeleton, private GitHub repo `wngstnr-code/clamp`) and 3 (empty programs that build and pass tests) done. Work goes stage by stage: after each stage, report and wait. |
 | Current milestone | M0 Setup |
 | Deadline | Sunday 2026-11-29, hour not confirmed |
 | Hard dates | Index live on devnet by 2026-11-20. First weekly series created by 2026-11-21. |
@@ -22,7 +22,7 @@ Update this file at the end of every session and after every milestone. Newest e
 ### Wangsit (programs and backend)
 
 1. ~~Install the Solana CLI and Anchor~~ (done 2026-11-18: Agave 4.4.1, Anchor 1.2.2, solana-verify 0.5.2).
-2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Next: empty `clamp` and `test-usdc` programs with `Anchor.toml` and the Cargo workspace (step 3).
+2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Step 3 done: empty `clamp` and `test-usdc` programs, `Anchor.toml`, Cargo workspace. Next: devnet keypairs (step 4).
 3. Try a verifiable build once with an empty program and check it against devnet (D-041, A17).
 4. Start M1 with `math/median.rs` and `math/twap.rs`, then the source rules in the SDK.
 
@@ -152,7 +152,9 @@ Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it
 
 ## Session log
 
-### 2026-11-18, M0 steps 1 and 2 (Wangsit)
+### 2026-11-18, M0 steps 1 to 3 (Wangsit)
+
+- Step 3: Cargo workspace, `Anchor.toml` (Anchor 1.2.2, Solana 4.4.1, pnpm, devnet), empty `clamp` and `test-usdc` programs with fixed program ids, one LiteSVM test per program (the program loads under its id). `anchor build`, `cargo test` and `cargo fmt --check` pass. LiteSVM stays on 0.15.0 through the template lock file (newer needs rustc 1.98.1). The Solana CLI was pointing to mainnet and now points to devnet.
 
 - Step 2: `git init` on `main`, `.gitignore` (secrets and build output only), `.env.example`, pnpm workspace, `rust-toolchain.toml` (1.96.0), `.nvmrc`. `CLAUDE.md` is now tracked (D-049). Three commits pushed to the private repo `wngstnr-code/clamp`. `Anchor.toml` and the Cargo workspace move to step 3, together with the programs.
 
