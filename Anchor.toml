@@ -1,0 +1,23 @@
+[toolchain]
+anchor_version = "1.2.2"
+solana_version = "4.4.1"
+package_manager = "pnpm"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+clamp = "wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC"
+test_usdc = "5QZihvTBjqZkmbX2gFcQjqnNBBq1AB3W8nRD2VeVUZLP"
+
+[programs.devnet]
+clamp = "wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC"
+test_usdc = "5QZihvTBjqZkmbX2gFcQjqnNBBq1AB3W8nRD2VeVUZLP"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/clamp/deployer.json"
+
+[scripts]
+test = "cargo test"
