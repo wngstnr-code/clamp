@@ -135,6 +135,18 @@ Checked: `anchor build`, 52 Rust tests, 60 SDK tests, 13 backend tests, clippy w
 | The env table in `architecture.md` did not list the reporter variables. | low | Fixed: `REPORTER_KEYPAIR`, `ARCHIVE_URL`. |
 | The public reporter bundle did not say which source commit it was built from. | low | Fixed: `publish-reporter.sh` puts the source commit in the commit message. |
 
+### Deep review of M2, part 1 (2026-11-18)
+
+Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, rustfmt, TypeScript typecheck, dash check. Spec 5, 7, 8, 9, 11 and 14 compared rule by rule with `create_series`, `mint_pairs`, `merge_pairs`, `seed_series`, `buy`, `sell`, `settle_series`, `redeem`, `sweep_series`, `deposit`, `withdraw` and the valuation code: all match (rounding directions, fee split, re-centering once per update, pause outside `P_MIN`, close one twenty-fourth of the period before expiry, NAV refused past expiry until settled). Settlement is the same for any caller at any time: the sums at expiry are extrapolated before the next update and interpolated after it with the same rule (previous price, gap capped at `MAX_GAP`). Live on devnet: the crank created and seeded the first daily and weekly series, and a buy and a sell worked. Part 2 (front-running simulation, first settlement and redeem) follows.
+
+| Finding | Severity | Fix |
+|---|---|---|
+| Ticks run at :00, :15, :30 and :45, but a series expires a few seconds after the tick that created it a period earlier. It was settled and replaced only at the next tick: about 15 minutes each day without a live daily series, and every later series started 15 minutes later. | low | Fixed: the crank waits (at most 120 s, chain clock) for a series that expires right after the tick (`expiryWait`, 3 tests). The tick call timeout in pg_cron went from 60 s to 280 s (migration `20261118170000_tick_timeout.sql`). |
+| `series buy` and `series sell` in the CLI read the side and the amount one position too far. | low | Fixed (CLI only, the program was right). |
+| Deposit and withdraw have no fee and use the index fair value, so someone who sees a provider price before the on-chain update can deposit just before an update that raises the NAV and withdraw after it. | medium | Known issue. The gain is bounded by the vault's net UP or DOWN position, the 10% step limit per update and the idle USDC available for withdrawal. Measure it with the trade front-running simulation. |
+| Anyone can create and seed a series of any enabled class and kind (spec 13), so the vault can also fund H100 or monthly series that the crank does not manage. | low | By design (each series is capped at 10% of NAV). Revisit if a class index gets too thin. |
+| Deposit and withdraw fail while an active series is past expiry and not settled. | low | Anyone can settle. The web app can put `settle_series` in front of the deposit or withdraw in the same transaction (note for AG). |
+
 ## Known issues and limits
 
 | Issue | Severity | Note |
@@ -146,6 +158,7 @@ Checked: `anchor build`, 52 Rust tests, 60 SDK tests, 13 backend tests, clippy w
 | The Vast.ai median is biased upward (cheap offers get rented first) | medium | The index level is not any one user's price. The app shows the user's rate next to the index. |
 | H100 supply is thin (6 Vast.ai offers on 2026-11-17) | medium | RTX 4090 is the primary class |
 | RunPod and Nosana are posted prices that move rarely | low | Fixed weights, median |
+| Vault deposits and withdrawals can be timed around index updates (no fee) | medium | Deep review M2. Same bound and same simulation as the row above. |
 | Traders who see an API price before the on-chain update can trade ahead of it | medium | Slippage, the 1% fee, the step limit, and the allocation cap bound the loss. Simulate it in M2. |
 | The band half widths are starting values without data behind them | medium | Recalibrate in M2 |
 | The legal status is not resolved | medium | Devnet and test tokens only |
