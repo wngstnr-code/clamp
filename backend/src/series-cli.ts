@@ -174,7 +174,7 @@ async function main() {
   }
 
   if (cmd === "buy" || cmd === "sell") {
-    const [, , , , , sideArg, amountArg, file] = process.argv.slice(2);
+    const [sideArg, amountArg, file] = [d, e, process.argv[8]];
     const side = Number(sideArg);
     const user = load(file ?? "test-user-1.json");
     const program = clampProgram(connection, new KeypairWallet(user));
