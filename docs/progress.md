@@ -161,7 +161,8 @@ Checked: `anchor build`, 52 Rust tests, 60 SDK tests, 13 backend tests, clippy w
 
 | Thing | Address | Date |
 |---|---|---|
-| Program `clamp` (M1 index with D-055, verifiable build of commit `188da50`, hash `08b4d17073a5eac67badd13e7d6c3b7fb9d28f27494e73b46b0608cd0e31da29`, upgrade authority = deployer) | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` | 2026-11-18 |
+| Program `clamp` (M2 stage 3: index, series, pairs, settlement, redeem; verifiable build of commit `368e918`, hash `b5ead3d97cde4a5e326ca895212bf58914a243ee2322d9ed10b7645c9fb71a3b`, 548 KB, upgrade authority = deployer) | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` | 2026-11-18 |
+| Earlier `clamp` build (M1 index with D-055, commit `188da50`, hash `08b4d170...`) | same address, replaced | 2026-11-18 |
 | Earlier `clamp` build (M1 index before D-055, commit `677f254`, hash `0e65886c...`) | same address, replaced | 2026-11-18 |
 | Earlier `clamp` build (empty M0 program, commit `6f0c0ef`, hash `c950400b...`) | same address, replaced | 2026-11-18 |
 | Program `test-usdc` (faucet, verifiable build of commit `efafcfe`, hash `446337791a2755bb8d288a5ce732b1c1255ead6299cb54c6f6c913430d263ed1`, upgrade authority = deployer) | `5QZihvTBjqZkmbX2gFcQjqnNBBq1AB3W8nRD2VeVUZLP` | 2026-11-18 |
