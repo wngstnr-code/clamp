@@ -24,7 +24,7 @@ Update this file at the end of every session and after every milestone. Newest e
 1. ~~Install the Solana CLI and Anchor~~ (done 2026-11-18: Agave 4.4.1, Anchor 1.2.2, solana-verify 0.5.2).
 2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Step 3 done: empty `clamp` and `test-usdc` programs, `Anchor.toml`, Cargo workspace. Step 4 done: deployer, worker and two test users in `~/.config/solana/clamp/` (addresses in `build-and-deploy.md` section 2). Next: the user funds deployer and worker, then the verifiable build spike (step 5, Docker must run).
 3. ~~Try a verifiable build once with an empty program and check it against devnet~~ (done 2026-11-18, hashes match). Step 6 done: Supabase project `clamp` (Singapore) linked, first migration applied, access checked. The user filled `.env` (Supabase URL, anon key, service role key), checked: anon read 200, anon write 401, service read 200.
-4. Start M1 with `math/median.rs` and `math/twap.rs`, then the source rules in the SDK.
+4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). Next: M1 stage 2, the index accounts and instructions (`initialize`, `set_class`, `init_index`, `submit_report`).
 
 ### AG (web app)
 
@@ -149,6 +149,11 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-18, M1 stage 1 (Wangsit)
+
+- Pure math in `programs/clamp/src/math/`: median and weighted median with capacity tiers, combining reporters per source with sanity bounds and quorum, step limit (bounds round inward), running sums, sums at a time, period average, coverage, and a binary search in the observation ring. 25 unit tests, including a randomized check of the weighted median against an expanded plain median and a check of the ring search against a linear scan for every ring state. Clippy clean with `-D warnings`.
+- Spec 6.2 now states the rounding of the two middle values and of the step limit bounds.
 
 ### 2026-11-18, M0 steps 1 to 7 (Wangsit)
 
