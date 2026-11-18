@@ -62,3 +62,6 @@ app.onError((err, c) => {
   console.error(err);
   return c.json({ error: err.message }, 500);
 });
+
+// Vercel picks src/app.ts as the entry and needs the app as the default export.
+export default app;
