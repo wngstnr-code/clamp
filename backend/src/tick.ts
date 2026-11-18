@@ -82,12 +82,14 @@ export async function recordStep(
         const { logs, slot, failed } = await readLogs(connection, signature);
         if (failed) continue;
         const parsed = rowsFromLogs(logs, signature, slot);
+        // Setup transactions (init_index, set_class) touch the index but carry no events.
+        if (parsed.ticks.length === 0 && parsed.updates.length === 0) continue;
         await store.insertSourceTicks(parsed.ticks);
         await store.insertIndexUpdates(parsed.updates);
         added += 1;
       }
     }
-    const result = { action: "record", ok: true, detail: `${added} new transactions` };
+    const result = { action: "record", ok: true, detail: `${added} new report transactions` };
     await store.logRun(result.action, result.ok, result.detail);
     return result;
   } catch (e) {
