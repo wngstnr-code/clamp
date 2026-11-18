@@ -6,7 +6,7 @@ Update this file at the end of every session and after every milestone. Newest e
 
 | Item | Value |
 |---|---|
-| Phase | **M0 in progress** (started 2026-11-18 on the user's go). Steps 1 (toolchain), 2 (repo skeleton, private GitHub repo `wngstnr-code/clamp`) 3 (empty programs that build and pass tests) 4 (devnet keypairs, funded) and 5 (verifiable build of the empty `clamp`, deployed to devnet, hashes match) done. Next: step 6 (Supabase). Work goes stage by stage: after each stage, report and wait. |
+| Phase | **M0 in progress** (started 2026-11-18 on the user's go). Steps 1 (toolchain), 2 (repo skeleton, private GitHub repo `wngstnr-code/clamp`) 3 (empty programs that build and pass tests) 4 (devnet keypairs, funded) 5 (verifiable build of the empty `clamp`, deployed to devnet, hashes match) and 6 (Supabase project, schema and bucket) done. Next: step 7 (reporter hosting decision, docs check), then M1. Work goes stage by stage: after each stage, report and wait. |
 | Current milestone | M0 Setup |
 | Deadline | Sunday 2026-11-29, hour not confirmed |
 | Hard dates | Index live on devnet by 2026-11-20. First weekly series created by 2026-11-21. |
@@ -23,7 +23,7 @@ Update this file at the end of every session and after every milestone. Newest e
 
 1. ~~Install the Solana CLI and Anchor~~ (done 2026-11-18: Agave 4.4.1, Anchor 1.2.2, solana-verify 0.5.2).
 2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Step 3 done: empty `clamp` and `test-usdc` programs, `Anchor.toml`, Cargo workspace. Step 4 done: deployer, worker and two test users in `~/.config/solana/clamp/` (addresses in `build-and-deploy.md` section 2). Next: the user funds deployer and worker, then the verifiable build spike (step 5, Docker must run).
-3. ~~Try a verifiable build once with an empty program and check it against devnet~~ (done 2026-11-18, hashes match). Next: Supabase migrations (step 6), needs the user's Supabase project.
+3. ~~Try a verifiable build once with an empty program and check it against devnet~~ (done 2026-11-18, hashes match). Step 6 done: Supabase project `clamp` (Singapore) linked, first migration applied, access checked. **The user still fills `.env`** with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (from Project Settings, API).
 4. Start M1 with `math/median.rs` and `math/twap.rs`, then the source rules in the SDK.
 
 ### AG (web app)
@@ -150,7 +150,9 @@ Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it
 
 ## Session log
 
-### 2026-11-18, M0 steps 1 to 5 (Wangsit)
+### 2026-11-18, M0 steps 1 to 6 (Wangsit)
+
+- Step 6: the user created the Supabase project `clamp` (Singapore, automatic API grants off, automatic RLS on) and logged the CLI in. Supabase CLI 3.2.0 added as a root dev dependency. First migration: `source_ticks`, `index_updates`, `series`, `crank_runs` with RLS (public read, service role write), check constraints, unique keys, and the public `raw` bucket. Verified with the anon key (read 200, write 401) and read-only SQL. Migrations live in `supabase/` at the root, not `backend/supabase/` as first planned.
 
 - Step 5: Docker runs through Colima (Rosetta). `solana-verify build` failed with its default image (3.0.1, Cargo too old) and worked with `-b solanafoundation/solana-verifiable-build:4.3.0`. Deployed the empty `clamp` to devnet; the on-chain hash equals the local hash (`c950400b...`). Balances after funding and the deploy: deployer about 15.7 SOL, worker about 2 SOL, test users 1 SOL each. The Solana CLI default keypair is now the deployer.
 

@@ -144,7 +144,8 @@ scripts/check-dashes.mjs  fails if any file contains an em dash or en dash
 programs/clamp/           the main Anchor program: index, series, pool, vault, locks (Wangsit)
 programs/test-usdc/       devnet-only faucet for the test USDC mint (Wangsit)
 packages/sdk/             TypeScript SDK: IDL, types, PDA helpers, math, readers (Wangsit, used by AG)
-backend/                  worker (price reporter and cranks), bill proxy, database migrations (Wangsit)
+backend/                  worker (price reporter and cranks), bill proxy (Wangsit)
+supabase/                 Supabase CLI config and SQL migrations (Wangsit)
 web/                      Next.js web app (AG)
 ```
 
@@ -160,6 +161,8 @@ Full details go in `docs/build-and-deploy.md`. Add each command to this table wh
 | Format check | `cargo fmt --all -- --check` |
 | Verifiable build (Docker running) | `solana-verify build --library-name clamp -b solanafoundation/solana-verifiable-build:4.3.0` |
 | Hash of the deployed program | `solana-verify get-program-hash -u devnet <program id>` |
+| Apply database migrations | `pnpm exec supabase db push --remote` |
+| Read-only SQL on the project | `pnpm exec supabase db query --remote --read-only "<sql>"` |
 
 ## 12. Definition of done (for any task)
 

@@ -171,7 +171,9 @@ pnpm --filter backend dev         # local HTTP server
 ```
 
 - Hosted as its own Vercel project with the root directory `backend/`. Secrets are set in the Vercel dashboard by the user.
-- Database: a Supabase project. Migrations live in `backend/supabase/migrations/`.
+- Database: Supabase project `clamp`, ref `qsszurelcfrzlswkhnkd`, region Southeast Asia (Singapore), URL `https://qsszurelcfrzlswkhnkd.supabase.co`. Migrations live in `supabase/migrations/` at the repo root. The Supabase CLI is a pinned dev dependency (3.2.0), so run it with `pnpm exec supabase` (Homebrew failed on Wangsit's machine because of old Xcode command line tools).
+- Login and link (run once per machine, in a normal terminal, because login opens a browser): `pnpm exec supabase login`, then `pnpm exec supabase link --project-ref qsszurelcfrzlswkhnkd`.
+- Run on 2026-11-18: `pnpm exec supabase db push --remote` (applied the first migration). Checked with the anon key: all four tables readable (HTTP 200), insert refused (HTTP 401). The `raw` bucket exists and is public.
 - Schedule: Supabase `pg_cron` with `pg_net` calls the tick route every 15 minutes. Example to adapt (not run yet):
 
 ```sql
