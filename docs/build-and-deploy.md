@@ -97,7 +97,7 @@ Dependency note: LiteSVM is pinned to 0.15.0 with the `Cargo.lock` from the Anch
 
 Deploy order on devnet:
 
-1. Deploy `test-usdc`, create the tUSDC mint.
+1. Deploy `test-usdc` (verifiable build with `--library-name test_usdc`), create the tUSDC mint. `setup:devnet` moves the mint authority to the faucet PDA `["mint_authority"]` once the faucet is deployed.
 2. Deploy `clamp`, call `initialize` with the tUSDC mint and the treasury account, signed by the upgrade authority (the deployer).
 3. Create the `Observations` account per class with a fresh keypair at full size (81,928 bytes, 0.417 SOL rent each on 2026-11-18), owned by the `clamp` program, all zero (D-051). The setup script does this with a system `create_account` instruction.
 4. Call `set_class` with the reporter keys and `min_reporters = 1`, then `init_index`.

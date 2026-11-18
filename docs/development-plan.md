@@ -40,7 +40,7 @@ M0 started on 2026-11-18 (D-047).
 - [x] W: `initialize`, `set_class`, `init_index`, `submit_report`, events
 - [x] W: source rules for RTX 4090 and H100 in the SDK, tested on saved real responses. Class configs on devnet.
 - [x] W: backend tick steps 1 and 2 (report, record), deployed, triggered every 15 minutes. Reporter 1 live with `min_reporters = 1`. (2026-11-18, ahead of the 2026-11-20 hard date)
-- [ ] W: reporters 2 and 3 live on other platforms, then `min_reporters = 2`
+- [x] W: reporters 2 and 3 live on other platforms, then `min_reporters = 2`
 - [x] W: SDK: IDL, PDA helpers, `getIndex`, `getTwap`, `verifyReport`
 - [ ] AG: index pages: live number, history chart, per-source table with status, reporter count per update, links to update transactions and raw files
 - [ ] AG: landing page first version with the live index number
@@ -49,7 +49,7 @@ Done when: the index page shows real on-chain updates for RTX 4090 arriving on t
 
 ## M2: Claim market (2026-11-20 to 2026-11-22)
 
-- [ ] W: `test-usdc` faucet program and the tUSDC mint
+- [x] W: `test-usdc` faucet program and the tUSDC mint
 - [ ] W: `math/pool.rs`, `math/vault.rs` with unit tests, including the worked example of spec 10.2
 - [ ] W: `create_series`, `seed_series`, `mint_pairs`, `merge_pairs`, `buy`, `sell`, `settle_series`, `redeem`
 - [ ] W: vault core: `deposit`, NAV, `sweep_series`

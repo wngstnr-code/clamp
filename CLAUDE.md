@@ -172,6 +172,7 @@ Full details go in `docs/build-and-deploy.md`. Add each command to this table wh
 | Backend health | `curl https://clamp-backend.vercel.app/health` |
 | Bundle the standalone reporter | `pnpm --filter @clamp/backend bundle:reporter` |
 | Set reporters and quorum (admin) | `pnpm --filter @clamp/backend set-reporters <min> <keypair files>...` |
+| Claim 1,000 tUSDC for a local keypair (devnet) | `pnpm --filter @clamp/backend faucet-claim <keypair file>` |
 | Read-only SQL on the project | `pnpm exec supabase db query --remote --read-only "<sql>"` |
 
 ## 12. Definition of done (for any task)
