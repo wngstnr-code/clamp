@@ -50,7 +50,7 @@ Done when: the index page shows real on-chain updates for RTX 4090 arriving on t
 ## M2: Claim market (2026-11-20 to 2026-11-22)
 
 - [x] W: `test-usdc` faucet program and the tUSDC mint
-- [ ] W: `math/pool.rs`, `math/vault.rs` with unit tests, including the worked example of spec 10.2
+- [x] W: `math/pool.rs`, `math/vault.rs` with unit tests, including the worked example of spec 10.2
 - [ ] W: `create_series`, `seed_series`, `mint_pairs`, `merge_pairs`, `buy`, `sell`, `settle_series`, `redeem`
 - [ ] W: vault core: `deposit`, NAV, `sweep_series`
 - [ ] W: instruction tests for every invariant touched
