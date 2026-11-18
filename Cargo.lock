@@ -4273,7 +4273,9 @@ name = "test-usdc"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "anchor-spl",
  "litesvm",
+ "solana-account",
  "solana-keypair",
  "solana-message",
  "solana-signer",
