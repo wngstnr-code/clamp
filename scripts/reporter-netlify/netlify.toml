@@ -1,0 +1,6 @@
+# Clamp Index reporter 3 (D-054): a Netlify scheduled function, no website.
+[build]
+  publish = "public"
+
+[functions]
+  node_bundler = "esbuild"

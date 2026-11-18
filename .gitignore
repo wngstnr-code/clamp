@@ -17,3 +17,6 @@ dist/
 
 # OS and editor files
 .DS_Store
+.vercel
+scripts/reporter-netlify/reporter-lib.mjs
+scripts/reporter-netlify/.netlify/
