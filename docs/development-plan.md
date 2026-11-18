@@ -51,8 +51,8 @@ Done when: the index page shows real on-chain updates for RTX 4090 arriving on t
 
 - [x] W: `test-usdc` faucet program and the tUSDC mint
 - [x] W: `math/pool.rs`, `math/vault.rs` with unit tests, including the worked example of spec 10.2
-- [ ] W: `create_series`, `seed_series`, `mint_pairs`, `merge_pairs`, `buy`, `sell`, `settle_series`, `redeem` (done 2026-11-18: create, mint, merge, settle, redeem; open: seed, buy, sell)
-- [ ] W: vault core: `deposit`, NAV, `sweep_series`
+- [ ] W: `create_series`, `seed_series`, `mint_pairs`, `merge_pairs`, `buy`, `sell`, `settle_series`, `redeem` (done 2026-11-18)
+- [x] W: vault core: `deposit`, NAV, `sweep_series` (also `withdraw`)
 - [ ] W: instruction tests for every invariant touched
 - [ ] W: backend tick step 3 (create, seed, settle, sweep) and step 4 (mirror)
 - [ ] W: recalibrate the half widths from the index history so far
