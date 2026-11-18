@@ -1,11 +1,12 @@
 // One tick (docs/architecture.md section 5): step 1 report, step 2 record.
-// Steps 3 (crank) and 4 (mirror) arrive with the claim market in M2.
+// Steps 3 (crank) and 4 (mirror) live in crank.ts.
 
 import { indexPda, type ClassSpec } from "@clamp/sdk";
 import { Connection, Keypair } from "@solana/web3.js";
 
 import { readLogs, sendReport } from "./chain.js";
 import type { Archiver } from "./archiver.js";
+import { crankStep, mirrorStep } from "./crank.js";
 import { rowsFromLogs } from "./events.js";
 import { allClasses, buildReport, fetchAll, requestKey, type ClassReport } from "./fetch-sources.js";
 import type { Store } from "./store.js";
@@ -107,8 +108,11 @@ export async function recordStep(
   }
 }
 
+/** One tick: report, record, crank, mirror (architecture 5). */
 export async function tick(connection: Connection, worker: Keypair, store: Store): Promise<StepResult[]> {
   const report = await reportStep(connection, worker, store, store);
   const record = await recordStep(connection, store);
-  return [...report, record];
+  const crank = await crankStep(connection, worker, store);
+  const mirror = await mirrorStep(connection, store);
+  return [...report, record, ...crank, mirror];
 }

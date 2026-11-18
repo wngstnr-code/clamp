@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { ARCHIVE_MAX_AGE_SECS, ARCHIVE_MAX_BYTES, verifyArchive } from "./archive-auth.js";
 import { loadEnv } from "./env.js";
 import { Store } from "./store.js";
+import { crankStep, mirrorStep } from "./crank.js";
 import { recordStep, reportStep, tick } from "./tick.js";
 
 const json = (x: unknown) => JSON.parse(JSON.stringify(x, (_k, v) => (typeof v === "bigint" ? v.toString() : v)));
@@ -106,6 +107,13 @@ app.post("/cron/record", async (c) => {
   if (!authorized(c.req.header("authorization"), loadEnv().cronSecret)) return c.json({ error: "unauthorized" }, 401);
   const { connection, store } = context();
   return c.json(json(await recordStep(connection, store)));
+});
+
+app.post("/cron/crank", async (c) => {
+  if (!authorized(c.req.header("authorization"), loadEnv().cronSecret)) return c.json({ error: "unauthorized" }, 401);
+  const { connection, worker, store } = context();
+  const crank = await crankStep(connection, worker, store);
+  return c.json(json([...crank, await mirrorStep(connection, store)]));
 });
 
 app.onError((err, c) => {

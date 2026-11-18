@@ -34,7 +34,9 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { Connection, Keypair, PublicKey, SystemProgram, type AccountMeta } from "@solana/web3.js";
+import { Connection, Keypair, SystemProgram, type AccountMeta } from "@solana/web3.js";
+
+import { createSeries, seedSeries, seriesTokens } from "./clamp-tx.js";
 
 const KEY_DIR = join(homedir(), ".config", "solana", "clamp");
 const load = (f: string) =>
@@ -69,33 +71,10 @@ async function main() {
 
   if (cmd === "create") {
     const payer = load(c ?? "worker.json");
-    const program = clampProgram(connection, new KeypairWallet(payer));
-    const cls = await program.account.classConfig.fetch(classPda(classId));
+    const cls = await clampProgram(connection).account.classConfig.fetch(classPda(classId));
     const seq = cls.seriesCount[kind] ?? 0;
-    const series = seriesPda(classId, kind, seq);
-    const index = await getIndex(connection, classId);
-    if (!index) throw new Error("no index");
-    const acc = seriesAccounts(series);
-    const sig = await program.methods
-      .createSeries(classId, kind)
-      .accountsPartial({
-        creator: payer.publicKey,
-        config: configPda(),
-        classConfig: classPda(classId),
-        indexState: indexPda(classId),
-        observations: index.observations,
-        series,
-        collateralMint: TUSDC_MINT,
-        upMint: acc.upMint,
-        downMint: acc.downMint,
-        collateral: acc.collateral,
-        upVault: acc.upVault,
-        downVault: acc.downVault,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .rpc();
-    console.log(`created class ${classId} kind ${kind} seq ${seq}: ${series.toBase58()} (${sig})`);
+    const { series, signature } = await createSeries(connection, payer, classId, kind, seq);
+    console.log(`created class ${classId} kind ${kind} seq ${seq}: ${series.toBase58()} (${signature})`);
     return;
   }
 
@@ -185,36 +164,11 @@ async function main() {
     return;
   }
 
-  const seriesTokens = (series: PublicKey, classId: number) => {
-    const acc = seriesAccounts(series);
-    return {
-      series,
-      indexState: indexPda(classId),
-      upMint: acc.upMint,
-      downMint: acc.downMint,
-      upVault: acc.upVault,
-      downVault: acc.downVault,
-      collateral: acc.collateral,
-      collateralMint: TUSDC_MINT,
-    };
-  };
-
   if (cmd === "seed") {
     const payer = load("worker.json");
-    const program = clampProgram(connection, new KeypairWallet(payer));
     const series = seriesPda(classId, kind, Number(c));
-    const sig = await program.methods
-      .seedSeries()
-      .accountsPartial({
-        config: configPda(),
-        vault: vaultPda(),
-        idle: idlePda(),
-        tokens: seriesTokens(series, classId),
-        tokenProgram: TOKEN_PROGRAM_ID,
-      } as never)
-      .remainingAccounts(await activeMetas())
-      .rpc();
-    const s = await program.account.series.fetch(series);
+    const sig = await seedSeries(connection, payer, series, classId);
+    const s = await clampProgram(connection).account.series.fetch(series);
     console.log(`seeded ${series.toBase58()} (${sig}): pool UP ${Number(s.poolUp.toString()) / 1e6}, DOWN ${Number(s.poolDown.toString()) / 1e6}`);
     return;
   }

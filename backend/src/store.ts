@@ -66,6 +66,18 @@ export class Store {
     if (error) throw new Error(`index_updates: ${error.message}`);
   }
 
+  /** Mirror of the series accounts (architecture 5.1). Never touches `settle_signature`. */
+  async upsertSeries(rows: Record<string, unknown>[]): Promise<void> {
+    if (rows.length === 0) return;
+    const { error } = await this.db.from("series").upsert(rows, { onConflict: "address" });
+    if (error) throw new Error(`series: ${error.message}`);
+  }
+
+  async setSettleSignature(address: string, signature: string): Promise<void> {
+    const { error } = await this.db.from("series").update({ settle_signature: signature }).eq("address", address);
+    if (error) console.error(`settle signature: ${error.message}`);
+  }
+
   /** Signatures among `signatures` that are already in `source_ticks`. */
   async knownSignatures(signatures: string[]): Promise<Set<string>> {
     if (signatures.length === 0) return new Set();
