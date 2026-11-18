@@ -41,6 +41,17 @@ AG needs Node and pnpm for the web app. AG needs the Solana CLI only to make a d
 | test users (2 or 3) | Manual tests of renter, owner and depositor flows |
 
 - Claude may create the keypairs. The user funds them from a devnet faucet.
+
+Created on 2026-11-18 on Wangsit's machine, in `~/.config/solana/clamp/` (mode 600, outside the repo). Public addresses only:
+
+| Keypair | File | Address | Funding target (devnet) |
+|---|---|---|---|
+| deployer | `deployer.json` | `ANyoPJpRbXGBTGkBRJxCN8SisTDJ3Z3NrUCvM9kKHXCF` | about 10 SOL (two program deploys, two Observations accounts at about 0.69 SOL each) |
+| worker | `worker.json` | `FxgwWh2iMLftA5PNTKCoXyDv9BN6JbERg16Qj4f8r2Bn` | 1 to 2 SOL (fees for reports and cranks) |
+| test user 1 | `test-user-1.json` | `H9n83SRkhNkdMGnbsiY2BLxjn5VhqpbRhqwdvPZu8p6a` | 1 SOL, from M2 on |
+| test user 2 | `test-user-2.json` | `EfGgf2DTSc2Uc6XRs9a792nJvwrF8u7tsmHEmjmnRfhY` | 1 SOL, from M2 on |
+
+Check balances: `solana balance <address> --url devnet`.
 - One env file: `.env` at the repo root, gitignored. `.env.example` lists the names only. The names are in `architecture.md` section 10.
 - `CLAUDE.md` is tracked in git (D-049). `.gitignore` keeps secrets (`.env`, keypair files) and build output out.
 - Repo: private GitHub repo `wngstnr-code/clamp`, branch `main`. Clone it with `gh repo clone wngstnr-code/clamp`, then `pnpm install`.
