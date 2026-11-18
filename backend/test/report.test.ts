@@ -154,6 +154,7 @@ describe("rowsFromLogs", () => {
     const rows = rowsFromLogs(logs, "sig2", 1);
     expect(rows.ticks.map((t) => t.ok)).toEqual([false, true, false, false]);
     expect(rows.ticks[0]!.error).toBe("no price reported");
+    // no hash, no file
     expect(rows.ticks.every((t) => t.raw_path === null)).toBe(true);
   });
 });

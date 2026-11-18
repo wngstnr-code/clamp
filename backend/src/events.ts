@@ -63,7 +63,8 @@ export function rowsFromLogs(
           capacity: e.capacities[i] ?? 0,
           ok: price > 0n,
           error: price > 0n ? null : (mine?.errors[i] ?? "no price reported"),
-          raw_path: mine?.rawPaths[i] ?? null,
+          // Every reporter archives in the shared content-addressed bucket (D-054).
+          raw_path: mine?.rawPaths[i] ?? (hasHash ? `raw/${hash}.json` : null),
           raw_sha256: hasHash ? hash : null,
           signature,
         });
