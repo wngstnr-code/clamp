@@ -138,10 +138,11 @@ pub struct Series {
     bump: u8, _reserved: [u8; 64],
 }
 
-// PDA ["vault"]
+// PDA ["vault"]; share mint ["shares"] (6 decimals, authority: vault); idle USDC ["idle"]
 pub struct Vault {
     share_mint: Pubkey, idle: Pubkey,       // idle USDC token account
-    active_series: [Pubkey; 8], active_count: u8,
+    active_series: [Pubkey; 8], active_count: u8,   // seeded, not swept, in seeding order
+    locked_shares: u64,             // the first deposit's 1,000 locked units, counted in every share price
     bump: u8, _reserved: [u8; 64],
 }
 
@@ -178,18 +179,19 @@ Ids: class `1` = RTX 4090, `2` = H100. Kind `0` = daily, `1` = weekly, `2` = mon
 
 | Instruction | Who | Spec | Notes |
 |---|---|---|---|
-| `initialize(params)` | program upgrade authority, once | 13 | Creates Config. Accounts: collateral mint, treasury token account of that mint, the program and its program data (the signer must be the upgrade authority, D-052). The Vault is created in M2. |
+| `initialize(params)` | program upgrade authority, once | 13 | Creates Config. Accounts: collateral mint, treasury token account of that mint, the program and its program data (the signer must be the upgrade authority, D-052). |
+| `init_vault()` | admin, once | 9 | Creates the Vault, the share mint and the idle account (D-057) |
 | `set_class(class_id, params)` | admin | 6, 13 | Creates or updates a ClassConfig (reporters, quorum, bounds, widths). The sources are fixed when the class is created (D-052). Affects future updates and future series only. Limits: 1 to 5 distinct reporters, `1 <= min_reporters <= reporters`, 1 to 6 distinct sources, fixed weight 1 or 2, `max_step_ppm` 1 to 500,000, half widths 1 to 900,000 ppm. |
 | `init_index(class_id)` | admin | 6.3 | Creates IndexState and binds the pre-created Observations account (must be all zero, owned by the program, exactly 81,928 bytes) |
 | `submit_report(class_id, prices: [u64; 6], capacities: [u32; 6], raw_hashes: [[u8; 32]; 6])` | a registered reporter | 6.2, 6.3 | Stores the report, then updates the index when the quorum and the interval allow it. Slots beyond the class's source count must be 0, and a price above 0 needs a non-zero raw hash (`MissingRawHash`, D-055). The update waits for every registered reporter, at most `REPORT_WAIT` = 600 s after the oldest fresh report. About 15,000 compute units with an update. |
 | `create_series(class_id, kind)` | anyone | 7.1 | Creates the series, its two mints (authority: the series PDA, 6 decimals, no freeze authority) and three token accounts; the caller pays the rent. Fails with `SeriesStillLive`, `IndexStale` (no update within `MAX_GAP`), `NotEnoughHistory` (under 6 h counted in the center window; a history shorter than 72 h starts the window at the oldest observation), `InvalidKind`. About 66,000 compute units. |
-| `seed_series()` | anyone, once | 9.2 | Moves the allocation from the vault and re-centers |
+| `seed_series()` | anyone, once | 9.2 | Moves the allocation from the vault, mints it as pairs into the series' vault accounts and re-centers at the fair value. Remaining accounts: the active series and their IndexStates (see `deposit`). |
 | `mint_pairs(amount)` / `merge_pairs(amount)` | user | 7.2 | Accounts: user, series, both mints, the series collateral, the collateral mint, the user's collateral account, the user's UP and DOWN ATAs (created if needed). Until settlement. |
-| `buy(side, usdc_in, min_out)` / `sell(side, amount, min_usdc_out)` | user | 8.3, 8.4 | Re-centers first when the index has a newer observation |
+| `buy(side, usdc_in, min_out)` / `sell(side, amount, min_usdc_out)` | user | 8.3, 8.4 | Re-centers first when the index has a newer observation. `user_claims` is the user's existing token account of the side's mint (the client creates the ATA first). Errors: `NotSeeded`, `TradingClosed`, `PoolPaused`, `SlippageExceeded`. About 46,000 compute units. |
 | `settle_series()` | anyone | 11 | Accounts: series, the class IndexState and Observations. |
 | `redeem(side, amount)` | holder | 11 | `side` 0 UP, 1 DOWN; the claim mint must match the side. |
-| `deposit(amount)` / `withdraw(shares)` | user | 9.2 | Remaining accounts: every active series and its IndexState |
-| `sweep_series()` | anyone | 9.2 | |
+| `deposit(amount)` / `withdraw(shares)` | user | 9.2 | Remaining accounts: for every active series in vault order, the series then the IndexState of its class (`ActiveSeriesMismatch` otherwise). A series past expiry must be settled first (`SeriesNeedsSettlement`). Deposits use the NAV rounded up, withdrawals rounded down. |
+| `sweep_series()` | anyone | 9.2 | After settlement: burns the vault's units, pays their value to idle, removes the series from the active list. |
 | `open_lock(...)` / `close_lock(min_usdc_out)` / `withdraw_lock_claims()` / `set_auto_roll(on)` | owner | 10.4 | |
 | `roll_lock()` | anyone | 10.4 | The caller pays the rent of the new lock. It goes back to that payer when the lock closes. |
 
@@ -238,7 +240,7 @@ All four requests were run by hand on 2026-11-17 and again on 2026-11-18. The 20
 
 ### 3.7 Events
 
-Anchor events, one per state change: `ReportSubmitted` (class_id, reporter, ts, prices, capacities, raw_hashes, all by source slot), `IndexUpdated` (class_id, ts, price, candidate, reporter_count, sources: per slot `{source_id, price, capacity, weight}`, cum_price, cum_valid, update_count), `SeriesCreated`, `SeriesSeeded`, `PairsMinted`, `PairsMerged`, `Trade` (series, user, side, direction, usdc, claims, fee, pool numbers after), `Recentered`, `SeriesSettled` (avg, up_value, coverage), `Redeemed`, `VaultDeposit`, `VaultWithdraw`, `SeriesSwept`, `LockOpened`, `LockClosed`, `LockRolled`. The proof page and the worker read them from transaction logs.
+Anchor events, one per state change: `ReportSubmitted` (class_id, reporter, ts, prices, capacities, raw_hashes, all by source slot), `IndexUpdated` (class_id, ts, price, candidate, reporter_count, sources: per slot `{source_id, price, capacity, weight}`, cum_price, cum_valid, update_count), `SeriesCreated`, `SeriesSeeded` (allocation, fair value, pools), `PairsMinted`, `PairsMerged`, `Trade` (series, user, side, is_buy, usdc, claims, fee, pool_up, pool_down, fair_value_ppm), `Recentered`, `SeriesSettled` (avg, up_value, coverage), `Redeemed`, `VaultDeposit` and `VaultWithdraw` (amounts, shares, nav, total_shares), `SeriesSwept` (units, payout), `LockOpened`, `LockClosed`, `LockRolled`. The proof page and the worker read them from transaction logs.
 
 ## 4. Program `test-usdc` (devnet only)
 
