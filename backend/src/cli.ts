@@ -2,7 +2,7 @@
 // Reads the repo root .env. The worker key comes from WORKER_KEYPAIR or, for
 // local runs, WORKER_KEYPAIR_PATH (a keypair file). Nothing secret is printed.
 
-import { SOURCE_NAMES } from "@clamp/sdk";
+import { SOURCE_NAMES, supabaseRawBase, verifyReport } from "@clamp/sdk";
 import { Connection } from "@solana/web3.js";
 
 import { loadEnv } from "./env.js";
@@ -27,9 +27,28 @@ async function dryRun() {
   console.log("\nDry run: nothing archived, nothing sent.");
 }
 
+/** Recomputes a report transaction from its public raw files. */
+async function verify(signature: string | undefined) {
+  if (!signature) throw new Error("usage: verify <transaction signature>");
+  const env = loadEnv();
+  if (!env.supabaseUrl) throw new Error("NEXT_PUBLIC_SUPABASE_URL is required");
+  const checks = await verifyReport(new Connection(env.rpcUrl, "confirmed"), signature, [supabaseRawBase(env.supabaseUrl)]);
+  for (const c of checks) {
+    console.log(`class ${c.classId} reporter ${c.reporter} ts ${c.ts}: ${c.ok ? "OK" : "MISMATCH"}`);
+    for (const s of c.slots) {
+      const name = String(SOURCE_NAMES[s.sourceId] ?? s.sourceId).padEnd(8);
+      const re = s.recomputedPrice === undefined ? "" : ` recomputed ${s.recomputedPrice} cap ${s.recomputedCapacity}`;
+      console.log(`  ${name} ${s.status.padEnd(14)} chain ${s.onChainPrice} cap ${s.onChainCapacity}${re}`);
+    }
+  }
+  if (checks.length === 0) console.log("no report events in this transaction");
+  if (checks.some((c) => !c.ok)) process.exitCode = 1;
+}
+
 async function main() {
   const [command, flag] = process.argv.slice(2);
   if (command === "report" && flag === "--dry-run") return dryRun();
+  if (command === "verify") return verify(flag);
 
   const env = loadEnv();
   if (!env.supabaseUrl || !env.supabaseServiceKey) throw new Error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
