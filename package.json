@@ -6,7 +6,10 @@
     "node": ">=24"
   },
   "scripts": {
-    "check:dashes": "node scripts/check-dashes.mjs"
+    "check:dashes": "node scripts/check-dashes.mjs",
+    "idl:sync": "cp target/idl/clamp.json packages/sdk/src/idl/clamp.json && cp target/types/clamp.ts packages/sdk/src/idl/clamp.ts",
+    "test:sdk": "pnpm --filter @clamp/sdk test",
+    "build:sdk": "pnpm --filter @clamp/sdk build"
   },
   "devDependencies": {
     "supabase": "3.2.0"
