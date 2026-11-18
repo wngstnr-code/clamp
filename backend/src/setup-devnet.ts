@@ -18,12 +18,13 @@ import {
   CLASSES,
   CLAMP_PROGRAM_ID,
   KeypairWallet,
+  TEST_USDC_PROGRAM_ID,
   classPda,
   clampProgram,
   configPda,
   indexPda,
 } from "@clamp/sdk";
-import { createMint, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
+import { AuthorityType, createMint, getMint, getOrCreateAssociatedTokenAccount, setAuthority } from "@solana/spl-token";
 import {
   Connection,
   Keypair,
@@ -81,6 +82,17 @@ async function main() {
   }
   const treasury = await getOrCreateAssociatedTokenAccount(connection, deployer, mintKp.publicKey, deployer.publicKey);
   console.log(`tUSDC mint ${mintKp.publicKey.toBase58()}`);
+
+  // 1b. hand the mint authority to the faucet program (M2), once it is deployed
+  const faucetAuthority = PublicKey.findProgramAddressSync([Buffer.from("mint_authority")], TEST_USDC_PROGRAM_ID)[0];
+  const mintInfo = await getMint(connection, mintKp.publicKey, "confirmed");
+  const faucetDeployed = (await connection.getAccountInfo(TEST_USDC_PROGRAM_ID, "confirmed"))?.executable === true;
+  if (mintInfo.mintAuthority?.equals(deployer.publicKey) && faucetDeployed) {
+    const sig = await setAuthority(connection, deployer, mintKp.publicKey, deployer, AuthorityType.MintTokens, faucetAuthority);
+    console.log(`mint authority -> faucet ${faucetAuthority.toBase58()} (${sig})`);
+  } else {
+    console.log(`mint authority ${mintInfo.mintAuthority?.toBase58() ?? "none"}`);
+  }
   console.log(`treasury   ${treasury.address.toBase58()}`);
 
   // 2. initialize
