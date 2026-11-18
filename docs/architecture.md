@@ -50,7 +50,8 @@ Rules that shape everything:
 programs/clamp/           the main Anchor program (Rust)                         Wangsit
 programs/test-usdc/       devnet-only faucet for the test USDC mint (Rust)       Wangsit
 packages/sdk/             TypeScript SDK: IDL, types, PDA helpers, math, source rules, readers  Wangsit (AG consumes it)
-backend/                  worker (reporter and cranks), bill proxy, database migrations  Wangsit
+backend/                  worker (reporter and cranks), bill proxy                Wangsit
+supabase/                 Supabase CLI config and SQL migrations                  Wangsit
 web/                      Next.js web app                                        AG
 scripts/                  check-dashes, deploy and setup scripts                 shared
 docs/                     these files                                            shared
@@ -259,7 +260,7 @@ Why the bill proxy exists: checked on 2026-11-17, the Vast.ai and RunPod APIs do
 
 ### 5.1 Database (Supabase, schema `public`)
 
-Row level security: everyone can read, only the service role (the worker) can write.
+Row level security: everyone can read, only the service role (the worker) can write. Schema in `supabase/migrations/` (first migration applied to the project on 2026-11-18). The tables carry check constraints for the units of spec section 5, and unique keys that make the record and mirror steps idempotent: `source_ticks (reporter, class_id, source_id, ts)`, `index_updates (signature, class_id)`, `series (address)`.
 
 | Table | Columns | Purpose |
 |---|---|---|
@@ -268,7 +269,7 @@ Row level security: everyone can read, only the service role (the worker) can wr
 | `series` | `address`, `class_id`, `kind`, `start_ts`, `close_ts`, `expiry_ts`, `center`, `lower`, `upper`, `settled`, `avg`, `up_value`, `coverage_ppm`, `settle_signature` | Mirror of the chain for lists |
 | `crank_runs` | `id`, `ts`, `action`, `ok`, `detail`, `signature` | Worker log |
 
-Storage bucket `raw` (public read): `raw/<class>/<source>/<unix ts>-<reporter>.json`, the exact bytes that were hashed.
+Storage bucket `raw` (public read, JSON only, 5 MB per file): `raw/<class>/<source>/<unix ts>-<reporter>.json`, the exact bytes that were hashed.
 
 Reporters fetch at slightly different moments, so their numbers can differ a little. That is why the program takes the median across reporters. The proof page checks the settlement math against on-chain data, and for any single report it checks file hash, recomputed price and on-chain value against each other.
 
