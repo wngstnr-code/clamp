@@ -6,6 +6,9 @@ pub mod pairs;
 pub mod set_class;
 pub mod settle;
 pub mod submit_report;
+pub mod trade;
+pub mod valuation;
+pub mod vault_flow;
 
 pub use create_series::*;
 pub use init_index::*;
@@ -14,3 +17,5 @@ pub use pairs::*;
 pub use set_class::*;
 pub use settle::*;
 pub use submit_report::*;
+pub use trade::*;
+pub use vault_flow::*;

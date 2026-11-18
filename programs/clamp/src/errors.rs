@@ -52,6 +52,30 @@ pub enum ClampError {
     NotSettled,
     #[msg("Side must be 0 (UP) or 1 (DOWN)")]
     InvalidSide,
+    #[msg("A series past expiry must be settled before the vault can be valued")]
+    SeriesNeedsSettlement,
+    #[msg("Remaining accounts must be every active series and its IndexState, in vault order")]
+    ActiveSeriesMismatch,
+    #[msg("Deposit refused (zero, below the 10 USDC first deposit, or worth no share)")]
+    InvalidDeposit,
+    #[msg("Withdrawal refused (zero or more shares than exist)")]
+    InvalidWithdraw,
+    #[msg("Not enough idle USDC in the vault")]
+    NotEnoughIdle,
+    #[msg("The series is already seeded")]
+    AlreadySeeded,
+    #[msg("The series is not seeded")]
+    NotSeeded,
+    #[msg("The vault already holds the maximum number of series")]
+    ActiveListFull,
+    #[msg("Trading is closed for this series")]
+    TradingClosed,
+    #[msg("The pool is paused: the outcome is almost certain")]
+    PoolPaused,
+    #[msg("The result is below the minimum you set")]
+    SlippageExceeded,
+    #[msg("Nothing to sweep")]
+    NothingToSweep,
 }
 
 impl From<MathError> for ClampError {

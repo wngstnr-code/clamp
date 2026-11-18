@@ -91,3 +91,63 @@ pub struct Redeemed {
     pub amount: u64,
     pub payout: u64,
 }
+
+#[event]
+pub struct VaultDeposit {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub shares: u64,
+    pub nav: u64,
+    pub total_shares: u64,
+}
+
+#[event]
+pub struct VaultWithdraw {
+    pub user: Pubkey,
+    pub shares: u64,
+    pub amount: u64,
+    pub nav: u64,
+    pub total_shares: u64,
+}
+
+#[event]
+pub struct SeriesSeeded {
+    pub series: Pubkey,
+    pub allocation: u64,
+    pub fair_value_ppm: u64,
+    pub pool_up: u64,
+    pub pool_down: u64,
+}
+
+#[event]
+pub struct Recentered {
+    pub series: Pubkey,
+    pub fair_value_ppm: u64,
+    pub pool_up: u64,
+    pub pool_down: u64,
+    pub inv_up: u64,
+    pub inv_down: u64,
+}
+
+/// A pool trade (spec 8.3, 8.4). `usdc` is paid in (buy) or paid out (sell).
+#[event]
+pub struct Trade {
+    pub series: Pubkey,
+    pub user: Pubkey,
+    pub side: u8,
+    pub is_buy: bool,
+    pub usdc: u64,
+    pub claims: u64,
+    pub fee: u64,
+    pub pool_up: u64,
+    pub pool_down: u64,
+    pub fair_value_ppm: u64,
+}
+
+#[event]
+pub struct SeriesSwept {
+    pub series: Pubkey,
+    pub up_units: u64,
+    pub down_units: u64,
+    pub payout: u64,
+}

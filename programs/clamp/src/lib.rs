@@ -75,4 +75,44 @@ pub mod clamp {
     pub fn redeem(ctx: Context<Redeem>, side: u8, amount: u64) -> Result<()> {
         instructions::settle::handle_redeem(ctx, side, amount)
     }
+
+    /// Creates the vault, its share mint and idle account. Admin, once.
+    pub fn init_vault(ctx: Context<InitVault>) -> Result<()> {
+        instructions::vault_flow::handle_init_vault(ctx)
+    }
+
+    /// Deposits collateral for vault shares. Remaining accounts: active series and their IndexStates.
+    pub fn deposit<'info>(ctx: Context<'info, VaultFlow<'info>>, amount: u64) -> Result<()> {
+        instructions::vault_flow::handle_deposit(ctx, amount)
+    }
+
+    /// Burns vault shares for idle collateral. Remaining accounts as for `deposit`.
+    pub fn withdraw<'info>(ctx: Context<'info, VaultFlow<'info>>, shares: u64) -> Result<()> {
+        instructions::vault_flow::handle_withdraw(ctx, shares)
+    }
+
+    /// Puts the vault's allocation into the pool of a series. Anyone, once.
+    pub fn seed_series<'info>(ctx: Context<'info, SeedSeries<'info>>) -> Result<()> {
+        instructions::trade::handle_seed_series(ctx)
+    }
+
+    /// Buys claims of one side through the pool.
+    pub fn buy(ctx: Context<TradeAccounts>, side: u8, usdc_in: u64, min_out: u64) -> Result<()> {
+        instructions::trade::handle_buy(ctx, side, usdc_in, min_out)
+    }
+
+    /// Sells claims of one side through the pool.
+    pub fn sell(
+        ctx: Context<TradeAccounts>,
+        side: u8,
+        amount: u64,
+        min_usdc_out: u64,
+    ) -> Result<()> {
+        instructions::trade::handle_sell(ctx, side, amount, min_usdc_out)
+    }
+
+    /// Returns the vault's units of a settled series to idle USDC. Anyone.
+    pub fn sweep_series(ctx: Context<SweepSeries>) -> Result<()> {
+        instructions::trade::handle_sweep_series(ctx)
+    }
 }
