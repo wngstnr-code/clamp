@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planCrank, type ClassState, type SeriesState } from "../src/crank-plan.js";
+import { expiryWait, planCrank, type ClassState, type SeriesState } from "../src/crank-plan.js";
 
 const NOW = 1_800_000_000;
 const DAY = 86_400;
@@ -99,5 +99,25 @@ describe("planCrank", () => {
       managed: [{ classId: 1, kind: 0 }],
     });
     expect(actions).toEqual([]);
+  });
+});
+
+describe("expiryWait", () => {
+  it("waits for a series that expires within the limit, with a margin", () => {
+    const d = series({ kind: 0, expiryTs: NOW + 18 });
+    expect(expiryWait([d], NOW)).toBe(20);
+  });
+
+  it("does not wait for a far, past or settled expiry", () => {
+    expect(expiryWait([series({ expiryTs: NOW + 121 })], NOW)).toBe(0);
+    expect(expiryWait([series({ expiryTs: NOW - 1 })], NOW)).toBe(0);
+    expect(expiryWait([series({ expiryTs: NOW + 10, settled: true })], NOW)).toBe(0);
+    expect(expiryWait([], NOW)).toBe(0);
+  });
+
+  it("waits for the soonest of several", () => {
+    const a = series({ key: "a", expiryTs: NOW + 90 });
+    const b = series({ key: "b", expiryTs: NOW + 30 });
+    expect(expiryWait([a, b], NOW)).toBe(32);
   });
 });
