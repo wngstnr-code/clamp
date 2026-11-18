@@ -36,7 +36,10 @@ struct Env {
     admin: Keypair,
     reporter: Keypair,
     user: Keypair,
+    /// A liquidity provider with 10,000 tUSDC.
+    lp: Keypair,
     mint: Pubkey,
+    treasury: Pubkey,
     obs: Pubkey,
     now: i64,
 }
@@ -319,6 +322,15 @@ fn setup() -> Env {
         anchor_spl::token::ID,
         token_data(&mint, &user.pubkey(), 1_000 * USDC),
     );
+    let lp = Keypair::new();
+    svm.airdrop(&lp.pubkey(), 100_000_000_000).unwrap();
+    let lp_collateral = get_associated_token_address(&lp.pubkey(), &mint);
+    put(
+        &mut svm,
+        lp_collateral,
+        anchor_spl::token::ID,
+        token_data(&mint, &lp.pubkey(), 10_000 * USDC),
+    );
     let obs = Pubkey::new_unique();
     put(&mut svm, obs, clamp::id(), vec![0u8; Observations::SIZE]);
 
@@ -327,7 +339,9 @@ fn setup() -> Env {
         admin,
         reporter,
         user,
+        lp,
         mint,
+        treasury,
         obs,
         now: 0,
     };
@@ -588,4 +602,409 @@ fn settlement_after_the_oracle_stops_counts_only_max_gap() {
     // MAX_GAP after the last update is still counted at the last price
     assert_eq!(settled.avg, 310_000);
     assert!(settled.coverage_ppm > 0 && settled.coverage_ppm < 1_000_000);
+}
+
+// ================================================================ vault and pool (spec 8, 9)
+
+use anchor_lang::solana_program::instruction::AccountMeta;
+use clamp::state::Vault;
+
+fn vault_pda() -> Pubkey {
+    pda(&[b"vault"])
+}
+fn shares_pda() -> Pubkey {
+    pda(&[b"shares"])
+}
+fn idle_pda() -> Pubkey {
+    pda(&[b"idle"])
+}
+
+impl Env {
+    fn init_vault(&mut self) {
+        let admin = self.admin.insecure_clone();
+        let ix = Instruction::new_with_bytes(
+            clamp::id(),
+            &clamp::instruction::InitVault {}.data(),
+            clamp::accounts::InitVault {
+                admin: admin.pubkey(),
+                config: config_pda(),
+                vault: vault_pda(),
+                share_mint: shares_pda(),
+                idle: idle_pda(),
+                collateral_mint: self.mint,
+                token_program: anchor_spl::token::ID,
+                system_program: system_program::ID,
+            }
+            .to_account_metas(None),
+        );
+        send(&mut self.svm, ix, &admin).unwrap();
+    }
+
+    /// Every active series and its IndexState, in vault order.
+    fn active_metas(&self) -> Vec<AccountMeta> {
+        let vault: Vault = read(&self.svm, &vault_pda());
+        vault
+            .active()
+            .iter()
+            .flat_map(|s| {
+                [
+                    AccountMeta::new_readonly(*s, false),
+                    AccountMeta::new_readonly(index_pda(), false),
+                ]
+            })
+            .collect()
+    }
+
+    fn vault_flow(
+        &mut self,
+        who: &Keypair,
+        amount: u64,
+        deposit: bool,
+        extra: Vec<AccountMeta>,
+    ) -> Result<u64, String> {
+        let mut accounts = clamp::accounts::VaultFlow {
+            user: who.pubkey(),
+            vault: vault_pda(),
+            share_mint: shares_pda(),
+            idle: idle_pda(),
+            collateral_mint: self.mint,
+            user_collateral: get_associated_token_address(&who.pubkey(), &self.mint),
+            user_shares: get_associated_token_address(&who.pubkey(), &shares_pda()),
+            token_program: anchor_spl::token::ID,
+            associated_token_program: anchor_spl::associated_token::ID,
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None);
+        accounts.extend(extra);
+        let data = if deposit {
+            clamp::instruction::Deposit { amount }.data()
+        } else {
+            clamp::instruction::Withdraw { shares: amount }.data()
+        };
+        send(
+            &mut self.svm,
+            Instruction::new_with_bytes(clamp::id(), &data, accounts),
+            who,
+        )
+    }
+
+    fn deposit(&mut self, who: &Keypair, amount: u64) -> Result<u64, String> {
+        let extra = self.active_metas();
+        self.vault_flow(who, amount, true, extra)
+    }
+
+    fn withdraw(&mut self, who: &Keypair, shares: u64) -> Result<u64, String> {
+        let extra = self.active_metas();
+        self.vault_flow(who, shares, false, extra)
+    }
+
+    fn series_tokens(&self, series: Pubkey) -> clamp::accounts::SeriesTokens {
+        clamp::accounts::SeriesTokens {
+            series,
+            index_state: index_pda(),
+            up_mint: child(b"up", &series),
+            down_mint: child(b"down", &series),
+            up_vault: child(b"upv", &series),
+            down_vault: child(b"downv", &series),
+            collateral: child(b"collateral", &series),
+            collateral_mint: self.mint,
+        }
+    }
+
+    fn seed(&mut self, series: Pubkey) -> Result<u64, String> {
+        let mut accounts = clamp::accounts::SeedSeries {
+            config: config_pda(),
+            vault: vault_pda(),
+            idle: idle_pda(),
+            tokens: self.series_tokens(series),
+            token_program: anchor_spl::token::ID,
+        }
+        .to_account_metas(None);
+        accounts.extend(self.active_metas());
+        let ix = Instruction::new_with_bytes(
+            clamp::id(),
+            &clamp::instruction::SeedSeries {}.data(),
+            accounts,
+        );
+        let user = self.user.insecure_clone();
+        send(&mut self.svm, ix, &user)
+    }
+
+    /// The user's ATA of the side's mint, created by a mint + merge of 1 unit
+    /// pair (the pairs instruction creates both ATAs).
+    fn ensure_claim_atas(&mut self, series: Pubkey) {
+        if self
+            .svm
+            .get_account(&get_associated_token_address(
+                &self.user.pubkey(),
+                &child(b"up", &series),
+            ))
+            .is_none()
+        {
+            self.pairs(series, 1, true).unwrap();
+            self.pairs(series, 1, false).unwrap();
+        }
+    }
+
+    fn trade(
+        &mut self,
+        series: Pubkey,
+        side: u8,
+        buy: bool,
+        amount: u64,
+        min: u64,
+    ) -> Result<u64, String> {
+        self.ensure_claim_atas(series);
+        let mint = if side == 0 {
+            child(b"up", &series)
+        } else {
+            child(b"down", &series)
+        };
+        let accounts = clamp::accounts::TradeAccounts {
+            user: self.user.pubkey(),
+            config: config_pda(),
+            vault: vault_pda(),
+            idle: idle_pda(),
+            treasury: self.treasury,
+            tokens: self.series_tokens(series),
+            user_collateral: self.user_collateral(),
+            user_claims: get_associated_token_address(&self.user.pubkey(), &mint),
+            token_program: anchor_spl::token::ID,
+        }
+        .to_account_metas(None);
+        let data = if buy {
+            clamp::instruction::Buy {
+                side,
+                usdc_in: amount,
+                min_out: min,
+            }
+            .data()
+        } else {
+            clamp::instruction::Sell {
+                side,
+                amount,
+                min_usdc_out: min,
+            }
+            .data()
+        };
+        let user = self.user.insecure_clone();
+        send(
+            &mut self.svm,
+            Instruction::new_with_bytes(clamp::id(), &data, accounts),
+            &user,
+        )
+    }
+
+    fn sweep(&mut self, series: Pubkey) -> Result<u64, String> {
+        let accounts = clamp::accounts::SweepSeries {
+            vault: vault_pda(),
+            idle: idle_pda(),
+            tokens: self.series_tokens(series),
+            token_program: anchor_spl::token::ID,
+        }
+        .to_account_metas(None);
+        let ix = Instruction::new_with_bytes(
+            clamp::id(),
+            &clamp::instruction::SweepSeries {}.data(),
+            accounts,
+        );
+        let user = self.user.insecure_clone();
+        send(&mut self.svm, ix, &user)
+    }
+
+    fn lp_shares(&self) -> u64 {
+        balance(
+            &self.svm,
+            &get_associated_token_address(&self.lp.pubkey(), &shares_pda()),
+        )
+    }
+
+    /// Every tUSDC unit in the system: wallets, idle, treasury, series collateral.
+    fn total_usdc(&self, series: &[Pubkey]) -> u64 {
+        let mut t = balance(&self.svm, &self.user_collateral())
+            + balance(
+                &self.svm,
+                &get_associated_token_address(&self.lp.pubkey(), &self.mint),
+            )
+            + balance(&self.svm, &idle_pda())
+            + balance(&self.svm, &self.treasury);
+        for s in series {
+            t += balance(&self.svm, &child(b"collateral", s));
+        }
+        t
+    }
+}
+
+/// History, a daily series, a vault with 1,000 tUSDC from the LP, seeded.
+fn market() -> (Env, Pubkey) {
+    let mut env = with_history();
+    env.init_vault();
+    let lp = env.lp.insecure_clone();
+    env.deposit(&lp, 1_000 * USDC).unwrap();
+    env.create_series(DAILY, 0).unwrap();
+    let key = series_pda(DAILY, 0);
+    env.seed(key).unwrap();
+    (env, key)
+}
+
+#[test]
+fn deposits_and_withdrawals_price_shares_by_nav() {
+    let mut env = with_history();
+    env.init_vault();
+    let lp = env.lp.insecure_clone();
+    assert_err(env.deposit(&lp, 10 * USDC - 1), "InvalidDeposit");
+    env.deposit(&lp, 500 * USDC).unwrap();
+    assert_eq!(env.lp_shares(), 500 * USDC - 1_000, "1,000 units locked");
+    let vault: Vault = read(&env.svm, &vault_pda());
+    assert_eq!(vault.locked_shares, 1_000);
+    env.deposit(&lp, 100 * USDC).unwrap();
+    assert_eq!(env.lp_shares(), 600 * USDC - 1_000);
+    env.withdraw(&lp, 100 * USDC).unwrap();
+    assert_eq!(balance(&env.svm, &idle_pda()), 500 * USDC);
+    assert_err(env.withdraw(&lp, 600 * USDC), "InvalidWithdraw");
+}
+
+#[test]
+fn seed_puts_ten_percent_of_nav_into_the_pool_at_fair_value() {
+    let (mut env, key) = market();
+    let s: Series = read(&env.svm, &key);
+    assert!(s.seeded);
+    assert_eq!(s.pairs_outstanding, 100 * USDC, "10% of a 1,000 NAV");
+    // the index sits at the band center, so the fair value is 0.5
+    assert_eq!((s.pool_up, s.pool_down), (100 * USDC, 100 * USDC));
+    assert_eq!((s.inv_up, s.inv_down), (0, 0));
+    assert_eq!(balance(&env.svm, &child(b"collateral", &key)), 100 * USDC);
+    assert_eq!(balance(&env.svm, &idle_pda()), 900 * USDC);
+    let vault: Vault = read(&env.svm, &vault_pda());
+    assert_eq!(vault.active(), &[key]);
+    assert_err(env.seed(key), "AlreadySeeded");
+    // the NAV still counts the seeded series: a new deposit gets shares 1 to 1
+    let lp = env.lp.insecure_clone();
+    let before = env.lp_shares();
+    env.deposit(&lp, 100 * USDC).unwrap();
+    assert_eq!(env.lp_shares() - before, 100 * USDC);
+    // leaving the series out of the remaining accounts is refused
+    assert_err(
+        env.vault_flow(&lp, USDC, true, vec![]),
+        "ActiveSeriesMismatch",
+    );
+}
+
+#[test]
+fn buy_and_sell_move_the_pool_keep_k_and_pay_fees() {
+    let (mut env, key) = market();
+    let all = [key];
+    let total = env.total_usdc(&all);
+    let s0: Series = read(&env.svm, &key);
+    let k0 = u128::from(s0.pool_up) * u128::from(s0.pool_down);
+    let idle0 = balance(&env.svm, &idle_pda());
+
+    let cu = env.trade(key, 0, true, 10 * USDC, 1).unwrap();
+    println!("buy: {cu} CU");
+    let s1: Series = read(&env.svm, &key);
+    let up = balance(
+        &env.svm,
+        &get_associated_token_address(&env.user.pubkey(), &s1.up_mint),
+    );
+    // spec 8.3 on a 100/100 pool: 9.9 pairs after the 1% fee,
+    // out = 100 + 9.9 - ceil(100 * 100 / 109.9) = 18.908189 (slippage on a small pool)
+    let new_up = (100u128 * 100 * 1_000_000_000_000).div_ceil(109_900_000);
+    assert_eq!(u128::from(up), 109_900_000 - new_up);
+    assert_eq!(up, 18_908_189);
+    assert!(u128::from(s1.pool_up) * u128::from(s1.pool_down) >= k0);
+    assert!(s1.pool_down > s1.pool_up, "UP got more expensive");
+    // fee 0.1 USDC: 0.08 to the vault, 0.02 to the treasury
+    assert_eq!(balance(&env.svm, &idle_pda()) - idle0, 80_000);
+    assert_eq!(balance(&env.svm, &env.treasury), 20_000);
+    assert_eq!(env.total_usdc(&all), total, "no tUSDC created or lost");
+
+    let paid_back = {
+        let before = balance(&env.svm, &env.user_collateral());
+        env.trade(key, 0, false, up, 1).unwrap();
+        balance(&env.svm, &env.user_collateral()) - before
+    };
+    assert!(
+        paid_back < 10 * USDC,
+        "a round trip never profits: {paid_back}"
+    );
+    let s2: Series = read(&env.svm, &key);
+    assert!(u128::from(s2.pool_up) * u128::from(s2.pool_down) >= k0);
+    assert_eq!(env.total_usdc(&all), total);
+}
+
+#[test]
+fn trades_refuse_bad_inputs_and_closed_or_unseeded_series() {
+    let (mut env, key) = market();
+    assert_err(
+        env.trade(key, 0, true, 10 * USDC, 100 * USDC),
+        "SlippageExceeded",
+    );
+    assert_err(env.trade(key, 2, true, 10 * USDC, 1), "InvalidSide");
+    env.create_series(1, 0).unwrap();
+    let weekly = series_pda(1, 0);
+    assert_err(env.trade(weekly, 0, true, 10 * USDC, 1), "NotSeeded");
+    // after close_ts
+    let s: Series = read(&env.svm, &key);
+    env.set_time(s.close_ts);
+    assert_err(env.trade(key, 0, true, 10 * USDC, 1), "TradingClosed");
+}
+
+#[test]
+fn the_pool_recenters_once_per_index_update_and_pauses_near_the_bound() {
+    let (mut env, key) = market();
+    env.trade(key, 0, true, 10 * USDC, 1).unwrap();
+    let after_trade: Series = read(&env.svm, &key);
+    // the index moves up 5%: the next trade re-centers to the new fair value
+    let next = env.now + 600;
+    env.set_time(next);
+    env.report(325_500).unwrap();
+    env.trade(key, 1, true, USDC, 1).unwrap();
+    let s: Series = read(&env.svm, &key);
+    assert!(s.last_recenter_ts > after_trade.last_recenter_ts);
+    // price_up = pool_down / (pool_up + pool_down) close to fair value 0.75
+    let price =
+        u128::from(s.pool_down) * 1_000_000 / (u128::from(s.pool_up) + u128::from(s.pool_down));
+    assert!((700_000..800_000).contains(&price), "price {price}");
+    // the index leaves the band above: the pool pauses
+    for p in [358_000, 393_000] {
+        let next = env.now + 600;
+        env.set_time(next);
+        env.report(p).unwrap();
+    }
+    assert_err(env.trade(key, 0, true, USDC, 1), "PoolPaused");
+}
+
+#[test]
+fn settle_then_sweep_returns_the_vault_units_to_idle() {
+    let (mut env, key) = market();
+    env.trade(key, 0, true, 10 * USDC, 1).unwrap();
+    let s: Series = read(&env.svm, &key);
+    let first = env.now + 600;
+    env.set_time(first);
+    env.run_index(310_000, s.expiry_ts - env.now);
+    // past expiry and not settled: the vault cannot be valued
+    let lp = env.lp.insecure_clone();
+    assert_err(env.deposit(&lp, USDC), "SeriesNeedsSettlement");
+    assert_err(env.sweep(key), "NotSettled");
+    env.settle(key).unwrap();
+    let idle_before = balance(&env.svm, &idle_pda());
+    env.sweep(key).unwrap();
+    let s: Series = read(&env.svm, &key);
+    assert!(s.swept && s.pool_up == 0 && s.inv_down == 0);
+    let gained = balance(&env.svm, &idle_pda()) - idle_before;
+    // index at the center: every claim is worth 0.5
+    assert!(
+        gained > 99 * USDC && gained <= 101 * USDC,
+        "gained {gained}"
+    );
+    let vault: Vault = read(&env.svm, &vault_pda());
+    assert!(vault.active().is_empty());
+    assert_err(env.sweep(key), "NothingToSweep");
+    // the LP can take everything that is idle now
+    let shares = env.lp_shares();
+    env.withdraw(&lp, shares).unwrap();
+    assert!(
+        balance(&env.svm, &idle_pda()) < 2_000,
+        "only the locked units' value stays"
+    );
 }
