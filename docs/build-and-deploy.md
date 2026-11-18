@@ -198,20 +198,19 @@ Local runs read the root `.env`. Set `WORKER_KEYPAIR_PATH=~/.config/solana/clamp
 - Database: Supabase project `clamp`, ref `qsszurelcfrzlswkhnkd`, region Southeast Asia (Singapore), URL `https://qsszurelcfrzlswkhnkd.supabase.co`. Migrations live in `supabase/migrations/` at the repo root. The Supabase CLI is a pinned dev dependency (3.2.0), so run it with `pnpm exec supabase` (Homebrew failed on Wangsit's machine because of old Xcode command line tools).
 - Login and link (run once per machine, in a normal terminal, because login opens a browser): `pnpm exec supabase login`, then `pnpm exec supabase link --project-ref qsszurelcfrzlswkhnkd`.
 - Run on 2026-11-18: `pnpm exec supabase db push --remote` (applied the first migration). Checked with the anon key: all four tables readable (HTTP 200), insert refused (HTTP 401). The `raw` bucket exists and is public.
-- Schedule: Supabase `pg_cron` with `pg_net` calls the tick route every 15 minutes. Example to adapt (not run yet):
+- Live on 2026-11-18: `https://clamp-backend.vercel.app` (project `clamp-backend`, root `backend/`, Node 24, framework Hono, Git repo connected, branch `main`). Vercel uses `backend/src/app.ts` as the entry, so it must `export default app`.
+- Env on Vercel (production): `SOLANA_RPC_URL`, `NEXT_PUBLIC_SUPABASE_URL` (set by Claude), `WORKER_KEYPAIR`, `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` (set by the user from a terminal, one line at a time, values read from files so nothing is shown).
+- Deploy: `vercel deploy --prod --yes` from the repo root (the link lives in `.vercel/` at the root; `.vercelignore` keeps `.env`, keypairs and build output out of the upload). A push to `main` should also deploy, but the first push after connecting the repo did not trigger a build, so deploy from the CLI when in doubt. The ignored build step skips builds when nothing in `backend/`, `packages/sdk/` or `pnpm-lock.yaml` changed.
+- Known runtime trap: `rpc-websockets` 9.3.9 `require()`s the ESM-only `uuid` 14, which the Vercel runtime rejects (`ERR_REQUIRE_ESM`) while local Node 24 accepts it. The root `package.json` pins `rpc-websockets` to 9.3.10 through `pnpm.overrides`. Check a change like this locally with `node --no-experimental-require-module --import tsx -e "import('./src/app.ts')"` from `backend/`.
+- Checks: `curl https://clamp-backend.vercel.app/health` (last successful report). A tick by hand: `curl -X POST -H "Authorization: Bearer $(cat ~/.config/solana/clamp/cron-secret.txt)" https://clamp-backend.vercel.app/cron/tick` (about 15 s).
+- Schedule: migration `supabase/migrations/20261118110000_schedule_tick.sql` enables `pg_cron` and `pg_net` and schedules `clamp-tick` every 15 minutes. It reads the secret from Supabase Vault by name, so the secret is never in a file in the repo. The user created the Vault entry once (run from the repo root, the value is read from the local file):
 
-```sql
-select cron.schedule(
-  'clamp-tick',
-  '*/15 * * * *',
-  $$ select net.http_post(
-       url := 'https://<backend host>/cron/tick',
-       headers := jsonb_build_object('Authorization', 'Bearer <secret>')
-     ) $$
-);
+```
+pnpm exec supabase db query --remote "select vault.create_secret('$(cat ~/.config/solana/clamp/cron-secret.txt)', 'clamp_cron_secret')"
 ```
 
-The real secret is typed into the Supabase dashboard by the user. It is never committed.
+- Check the schedule: `select * from cron.job_run_details order by start_time desc limit 5` and `select status_code, content from net._http_response order by created desc limit 5` (read-only queries with `pnpm exec supabase db query --remote --read-only`).
+- `CRON_SECRET` is kept locally in `~/.config/solana/clamp/cron-secret.txt` (mode 600, outside the repo).
 
 ## 5. Web app
 

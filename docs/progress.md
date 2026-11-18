@@ -6,7 +6,7 @@ Update this file at the end of every session and after every milestone. Newest e
 
 | Item | Value |
 |---|---|
-| Phase | **M0 in progress** (started 2026-11-18 on the user's go). Steps 1 (toolchain), 2 (repo skeleton, private GitHub repo `wngstnr-code/clamp`) 3 (empty programs that build and pass tests) 4 (devnet keypairs, funded) 5 (verifiable build of the empty `clamp`, deployed to devnet, hashes match) and 6 (Supabase project, schema and bucket) done. Step 7: reporter 3 decided (D-050, team-run on a third platform first). **M0 done for Wangsit.** Next: M1. Work goes stage by stage: after each stage, report and wait. |
+| Phase | **M1: the index is live on devnet and updates every 15 minutes (reporter 1).** Earlier: M0 in progress (started 2026-11-18 on the user's go). Steps 1 (toolchain), 2 (repo skeleton, private GitHub repo `wngstnr-code/clamp`) 3 (empty programs that build and pass tests) 4 (devnet keypairs, funded) 5 (verifiable build of the empty `clamp`, deployed to devnet, hashes match) and 6 (Supabase project, schema and bucket) done. Step 7: reporter 3 decided (D-050, team-run on a third platform first). **M0 done for Wangsit.** Next: M1. Work goes stage by stage: after each stage, report and wait. |
 | Current milestone | M1 Index live (Wangsit). AG still on M0. |
 | Deadline | Sunday 2026-11-29, hour not confirmed |
 | Hard dates | Index live on devnet by 2026-11-20. First weekly series created by 2026-11-21. |
@@ -24,7 +24,7 @@ Update this file at the end of every session and after every milestone. Newest e
 1. ~~Install the Solana CLI and Anchor~~ (done 2026-11-18: Agave 4.4.1, Anchor 1.2.2, solana-verify 0.5.2).
 2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Step 3 done: empty `clamp` and `test-usdc` programs, `Anchor.toml`, Cargo workspace. Step 4 done: deployer, worker and two test users in `~/.config/solana/clamp/` (addresses in `build-and-deploy.md` section 2). Next: the user funds deployer and worker, then the verifiable build spike (step 5, Docker must run).
 3. ~~Try a verifiable build once with an empty program and check it against devnet~~ (done 2026-11-18, hashes match). Step 6 done: Supabase project `clamp` (Singapore) linked, first migration applied, access checked. The user filled `.env` (Supabase URL, anon key, service role key), checked: anon read 200, anon write 401, service read 200.
-4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). ~~M1 stage 3: SDK and source rules~~ (done 2026-11-18). M1 stage 4 code done (2026-11-18): `backend/` with report and record steps, dry run on live data works. M1 stage 5 done (2026-11-18): the M1 program is on devnet (verifiable, hashes match), setup done, first updates sent from a laptop and verified. Next: deploy the backend to Vercel and start pg_cron every 15 minutes (needs the user).
+4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). ~~M1 stage 3: SDK and source rules~~ (done 2026-11-18). M1 stage 4 code done (2026-11-18): `backend/` with report and record steps, dry run on live data works. M1 stage 5 done (2026-11-18): the M1 program is on devnet (verifiable, hashes match), setup done, first updates sent from a laptop and verified. **The index runs on its own since 2026-11-18 11:00 UTC**: pg_cron calls `https://clamp-backend.vercel.app/cron/tick` every 15 minutes (reporter 1, quorum 1). Next: M1 stage 6, reporters 2 and 3 (raw archive per reporter, then quorum 2).
 
 ### AG (web app)
 
@@ -161,6 +161,12 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-18, M1 backend live (Wangsit)
+
+- Vercel project `clamp-backend` created by Claude with the user's approval (root `backend/`, Node 24, Hono, Git repo connected). The user set `WORKER_KEYPAIR`, `CRON_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` from a terminal (values read from files, never shown). `CRON_SECRET` is kept in `~/.config/solana/clamp/cron-secret.txt`.
+- Two runtime fixes: pinned `rpc-websockets` 9.3.10 (9.3.9 `require()`s the ESM-only uuid 14, rejected by the Vercel runtime), and `export default app` in `src/app.ts` (Vercel's chosen entry).
+- pg_cron job `clamp-tick` every 15 minutes (migration, secret read from Supabase Vault). The 10:45 UTC run was refused (401) because the Vault entry was created 25 s later; the 11:00 UTC run succeeded: RTX 4090 $0.3636, H100 $2.69.
 
 ### 2026-11-18, M1 stage 5 (Wangsit)
 

@@ -168,6 +168,8 @@ Full details go in `docs/build-and-deploy.md`. Add each command to this table wh
 | Devnet setup (idempotent) | `pnpm --filter @clamp/backend setup:devnet` |
 | One reporter tick from a laptop | `WORKER_KEYPAIR_PATH=~/.config/solana/clamp/worker.json pnpm --filter @clamp/backend tick` |
 | Verify a report transaction | `pnpm --filter @clamp/backend verify <signature>` |
+| Deploy the backend | `vercel deploy --prod --yes` (repo root) |
+| Backend health | `curl https://clamp-backend.vercel.app/health` |
 | Read-only SQL on the project | `pnpm exec supabase db query --remote --read-only "<sql>"` |
 
 ## 12. Definition of done (for any task)
