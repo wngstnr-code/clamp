@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::constants::{
     CLASS_SEED, INDEX_SEED, MAX_GAP, MAX_REPORTERS, MAX_SOURCES, MIN_UPDATE_INTERVAL,
-    OBS_CARDINALITY, REPORT_WINDOW,
+    OBS_CARDINALITY, REPORT_WAIT, REPORT_WINDOW,
 };
 use crate::errors::ClampError;
 use crate::events::{IndexUpdated, ReportSubmitted, SourceUsed};
@@ -50,6 +50,14 @@ pub fn handle_submit_report(
             && capacities[source_count..].iter().all(|c| *c == 0),
         ClampError::InvalidReport
     );
+    // Every price needs public evidence: the hash of its raw API answer (D-055).
+    require!(
+        prices
+            .iter()
+            .zip(raw_hashes.iter())
+            .all(|(p, h)| *p == 0 || *h != [0u8; 32]),
+        ClampError::MissingRawHash
+    );
 
     let now = Clock::get()?.unix_timestamp;
     let index = &mut ctx.accounts.index_state;
@@ -87,6 +95,7 @@ fn try_update(
     // 2. Fresh reports: current reporter, recent, not used yet.
     let mut fresh = [false; MAX_REPORTERS];
     let mut fresh_count: u8 = 0;
+    let mut oldest_fresh = i64::MAX;
     for (i, r) in index
         .reports
         .iter()
@@ -100,9 +109,14 @@ fn try_update(
         if is_fresh {
             fresh[i] = true;
             fresh_count += 1;
+            oldest_fresh = oldest_fresh.min(r.ts);
         }
     }
     if fresh_count < class.min_reporters {
+        return Ok(());
+    }
+    // Wait for the missing reporters, at most REPORT_WAIT after the oldest fresh report.
+    if fresh_count < class.reporter_count && now.saturating_sub(oldest_fresh) < REPORT_WAIT {
         return Ok(());
     }
 

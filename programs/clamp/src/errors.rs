@@ -26,6 +26,8 @@ pub enum ClampError {
     MathOverflow,
     #[msg("Invalid input to a math function")]
     MathInvalidInput,
+    #[msg("A price above 0 needs the hash of its raw API answer")]
+    MissingRawHash,
 }
 
 impl From<MathError> for ClampError {

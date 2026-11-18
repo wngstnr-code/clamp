@@ -6,6 +6,8 @@ pub const MIN_UPDATE_INTERVAL: i64 = 600;
 pub const MAX_GAP: i64 = 7_200;
 /// A report older than this many seconds is ignored.
 pub const REPORT_WINDOW: i64 = 900;
+/// How long an update waits for the reporters that have not reported yet (D-055).
+pub const REPORT_WAIT: i64 = 600;
 /// Entries in the observation ring of each class.
 pub const OBS_CARDINALITY: usize = 2_048;
 /// Reporters per class, at most.
