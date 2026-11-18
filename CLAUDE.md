@@ -162,6 +162,9 @@ Full details go in `docs/build-and-deploy.md`. Add each command to this table wh
 | Verifiable build (Docker running) | `solana-verify build --library-name clamp -b solanafoundation/solana-verifiable-build:4.3.0` |
 | Hash of the deployed program | `solana-verify get-program-hash -u devnet <program id>` |
 | Apply database migrations | `pnpm exec supabase db push --remote` |
+| Copy the IDL into the SDK (after `anchor build`) | `pnpm idl:sync` |
+| SDK tests | `pnpm test:sdk` |
+| SDK build | `pnpm build:sdk` |
 | Read-only SQL on the project | `pnpm exec supabase db query --remote --read-only "<sql>"` |
 
 ## 12. Definition of done (for any task)

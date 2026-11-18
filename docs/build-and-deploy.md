@@ -159,6 +159,18 @@ Note: the host build (`anchor build`) uses cargo-build-sbf 4.5.0 and gives a dif
 
 Open point: whether explorers show a "verified" badge for devnet programs is not known yet (A17). The hash match and the README command are the proof either way.
 
+## 3b. SDK (`packages/sdk`)
+
+Run on 2026-11-18:
+
+```
+pnpm idl:sync      # copy target/idl and target/types into packages/sdk/src/idl (after anchor build)
+pnpm test:sdk      # vitest: shared math vectors, source rules on saved real responses, decoders, verifyReport
+pnpm build:sdk     # tsc into packages/sdk/dist
+```
+
+Dependencies (pinned): `@anchor-lang/core` 1.2.2, `@solana/web3.js` 1.99.0 (Anchor's TypeScript client needs 1.x), TypeScript 6.0.3, Vitest 5.0.5.
+
 ## 4. Backend
 
 All not run yet.

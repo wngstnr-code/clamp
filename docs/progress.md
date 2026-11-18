@@ -24,7 +24,7 @@ Update this file at the end of every session and after every milestone. Newest e
 1. ~~Install the Solana CLI and Anchor~~ (done 2026-11-18: Agave 4.4.1, Anchor 1.2.2, solana-verify 0.5.2).
 2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Step 3 done: empty `clamp` and `test-usdc` programs, `Anchor.toml`, Cargo workspace. Step 4 done: deployer, worker and two test users in `~/.config/solana/clamp/` (addresses in `build-and-deploy.md` section 2). Next: the user funds deployer and worker, then the verifiable build spike (step 5, Docker must run).
 3. ~~Try a verifiable build once with an empty program and check it against devnet~~ (done 2026-11-18, hashes match). Step 6 done: Supabase project `clamp` (Singapore) linked, first migration applied, access checked. The user filled `.env` (Supabase URL, anon key, service role key), checked: anon read 200, anon write 401, service read 200.
-4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). Next: M1 stage 3, SDK and source rules from saved real API responses.
+4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). ~~M1 stage 3: SDK and source rules~~ (done 2026-11-18). Next: M1 stage 4, backend reporter 1 (report and record steps, Vercel, pg_cron).
 
 ### AG (web app)
 
@@ -36,7 +36,8 @@ Update this file at the end of every session and after every milestone. Newest e
    - **Events:** `ReportSubmitted` (per reporter: prices, capacities, raw hashes by source slot) and `IndexUpdated` (price, candidate before the step limit, `reporter_count`, per source `{source_id, price, capacity, weight}`, weight 0 = left out). Fields in `architecture.md` section 3.7.
    - **Units:** prices are micro-USD per GPU-hour (`340000` = $0.34), timestamps are unix seconds. Class 1 = RTX 4090, 2 = H100. Source 1 Vast.ai, 2 RunPod, 3 Akash, 4 Nosana.
    - **History for charts:** the Supabase tables `index_updates` and `source_ticks` (public read with the anon key, `architecture.md` section 5.1). They fill once reporter 1 runs (M1 stage 4).
-   - Not deployed yet: the devnet program still holds the empty M0 build until M1 stage 5. Readers like `getIndex` arrive in `packages/sdk` in M1 stage 3.
+   - Readers in `packages/sdk` (since M1 stage 3): `getIndex`, `getObservations`, `getTwap`, `twapFromObservations`, `verifyReport`, PDA helpers, class specs with a `description` per source for the index page (`RTX4090`, `H100`, `SOURCE_NAMES`). Build with `pnpm build:sdk`.
+   - Not deployed yet: the devnet program still holds the empty M0 build until M1 stage 5.
 
 ### The humans
 
@@ -155,6 +156,12 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-18, M1 stage 3 (Wangsit)
+
+- Saved the real answers of all four price APIs (`packages/sdk/test/fixtures/2026-11-18/`). Nosana now lists H100 markets. The user chose H100 = SXM plus Nosana (D-053).
+- `packages/sdk`: constants, PDA helpers, typed program client, the index math mirrored from Rust, source rules and class specs, `getIndex`, `getObservations`, `getTwap`, `verifyReport` (content-addressed raw files, D-053). 60 Vitest tests: shared vectors, rules on real data (RTX 4090 $0.3636, H100 $2.69, values checked separately in Python), broken answers, account decoders against Anchor's coder, and `verifyReport` with honest, wrong-price, missing, tampered and not-reported slots.
+- Rust reads the same vectors (`tests/test_vectors.rs`, 6 tests): program and SDK compute the same numbers.
 
 ### 2026-11-18, M1 stage 2 (Wangsit)
 
