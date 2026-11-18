@@ -5,6 +5,8 @@
 
 use anchor_lang::prelude::*;
 
+pub mod math;
+
 declare_id!("wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC");
 
 #[program]
