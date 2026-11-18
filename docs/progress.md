@@ -24,7 +24,7 @@ Update this file at the end of every session and after every milestone. Newest e
 1. ~~Install the Solana CLI and Anchor~~ (done 2026-11-18: Agave 4.4.1, Anchor 1.2.2, solana-verify 0.5.2).
 2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Step 3 done: empty `clamp` and `test-usdc` programs, `Anchor.toml`, Cargo workspace. Step 4 done: deployer, worker and two test users in `~/.config/solana/clamp/` (addresses in `build-and-deploy.md` section 2). Next: the user funds deployer and worker, then the verifiable build spike (step 5, Docker must run).
 3. ~~Try a verifiable build once with an empty program and check it against devnet~~ (done 2026-11-18, hashes match). Step 6 done: Supabase project `clamp` (Singapore) linked, first migration applied, access checked. The user filled `.env` (Supabase URL, anon key, service role key), checked: anon read 200, anon write 401, service read 200.
-4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). Next: M1 stage 2, the index accounts and instructions (`initialize`, `set_class`, `init_index`, `submit_report`).
+4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). Next: M1 stage 3, SDK and source rules from saved real API responses.
 
 ### AG (web app)
 
@@ -149,6 +149,12 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-18, M1 stage 2 (Wangsit)
+
+- Program: `Config`, `ClassConfig`, `IndexState`, `Observations` and the instructions `initialize`, `set_class`, `init_index`, `submit_report` with the events `ReportSubmitted` and `IndexUpdated`, following spec 6.2 and 6.3.
+- Contract changes (D-051, D-052, `architecture.md` 3.1 to 3.3 and 3.7 updated): Observations is a keypair account bound in `IndexState.observations` with 40-byte entries; `IndexState.reports[i].reporter` added; `initialize` only by the upgrade authority and without the Vault; sources fixed per class. **AG: the IDL and the event fields for the index pages are now real (`target/idl/clamp.json`).**
+- 14 LiteSVM tests, each failure path checked against its exact error: upgrade authority only, params ranges, admin only, sources locked, ring size and owner and binding (including another class's valid ring), unregistered reporter, unused slots, disabled class, weighted median, interval, step limit both ways, quorum of 2 with a median per source, stale reports, used reports, too few sources or weight, out-of-bounds prices, a replaced reporter, the max gap, and a ring wrap after 2,050 updates. An update costs about 15,000 compute units.
 
 ### 2026-11-18, M1 stage 1 (Wangsit)
 

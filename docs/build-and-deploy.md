@@ -98,8 +98,8 @@ Dependency note: LiteSVM is pinned to 0.15.0 with the `Cargo.lock` from the Anch
 Deploy order on devnet:
 
 1. Deploy `test-usdc`, create the tUSDC mint.
-2. Deploy `clamp`, call `initialize` with the tUSDC mint and the treasury account.
-3. Create the `Observations` account per class at full size (about 98 KB, about 0.69 SOL rent each).
+2. Deploy `clamp`, call `initialize` with the tUSDC mint and the treasury account, signed by the upgrade authority (the deployer).
+3. Create the `Observations` account per class with a fresh keypair at full size (81,928 bytes, about 0.57 SOL rent each), owned by the `clamp` program, all zero (D-051). The setup script does this with a system `create_account` instruction.
 4. Call `set_class` with the reporter keys and `min_reporters = 1`, then `init_index`.
 5. Start the worker. Check the first `submit_report` and the first index update on an explorer. Check one report by hand: raw file, hash, recomputed price, on-chain value.
 5b. Start reporters 2 and 3 on their own platforms, add their keys with `set_class`, raise `min_reporters` to 2.
