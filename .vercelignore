@@ -1,0 +1,15 @@
+# Never upload secrets or local build output to Vercel
+.env
+.env.*
+!.env.example
+*-keypair.json
+id.json
+target/
+.anchor/
+test-ledger/
+node_modules/
+**/node_modules/
+**/dist/
+.next/
+programs/
+supabase/.temp/
