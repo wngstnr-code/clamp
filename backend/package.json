@@ -20,7 +20,8 @@
     "faucet-claim": "tsx --env-file=../.env src/faucet-claim.ts",
     "series": "tsx --env-file=../.env src/series-cli.ts",
     "crank": "tsx --env-file=../.env src/cli.ts crank",
-    "mirror": "tsx --env-file=../.env src/cli.ts mirror"
+    "mirror": "tsx --env-file=../.env src/cli.ts mirror",
+    "prune": "tsx --env-file=../.env src/cli.ts prune"
   },
   "dependencies": {
     "@clamp/sdk": "workspace:*",

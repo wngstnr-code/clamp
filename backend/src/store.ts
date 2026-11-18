@@ -86,6 +86,37 @@ export class Store {
     return new Set((data ?? []).map((r) => r.signature as string));
   }
 
+  /** Raw files, oldest first, skipping the first `offset`. */
+  async listRawOldestFirst(limit: number, offset: number): Promise<{ name: string; createdAt: string | null }[]> {
+    const { data, error } = await this.db.storage
+      .from(RAW_BUCKET)
+      .list("", { limit, offset, sortBy: { column: "created_at", order: "asc" } });
+    if (error) throw new Error(`list raw: ${error.message}`);
+    return (data ?? []).map((f) => ({ name: f.name, createdAt: f.created_at ?? null }));
+  }
+
+  /** Hashes among `hashes` that a source row at or after `since` still uses. */
+  async hashesUsedSince(hashes: string[], since: Date): Promise<Set<string>> {
+    const used = new Set<string>();
+    for (let i = 0; i < hashes.length; i += 100) {
+      const { data, error } = await this.db
+        .from("source_ticks")
+        .select("raw_sha256")
+        .in("raw_sha256", hashes.slice(i, i + 100))
+        .gte("ts", since.toISOString());
+      if (error) throw new Error(`used hashes: ${error.message}`);
+      for (const r of data ?? []) used.add(r.raw_sha256 as string);
+    }
+    return used;
+  }
+
+  async removeRaw(names: string[]): Promise<void> {
+    for (let i = 0; i < names.length; i += 100) {
+      const { error } = await this.db.storage.from(RAW_BUCKET).remove(names.slice(i, i + 100));
+      if (error) throw new Error(`remove raw: ${error.message}`);
+    }
+  }
+
   async logRun(action: string, ok: boolean, detail: string | null, signature: string | null = null): Promise<void> {
     const { error } = await this.db.from("crank_runs").insert({ action, ok, detail, signature });
     if (error) console.error(`crank_runs: ${error.message}`);

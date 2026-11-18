@@ -1,4 +1,4 @@
-// Local runs: `pnpm --filter @clamp/backend tick | report | record | dry-run`.
+// Local runs: `pnpm --filter @clamp/backend tick | report | record | dry-run | prune`.
 // Reads the repo root .env. The worker key comes from WORKER_KEYPAIR or, for
 // local runs, WORKER_KEYPAIR_PATH (a keypair file). Nothing secret is printed.
 
@@ -9,6 +9,7 @@ import { loadEnv } from "./env.js";
 import { allClasses, buildReport, fetchAll } from "./fetch-sources.js";
 import { Store } from "./store.js";
 import { crankStep, mirrorStep } from "./crank.js";
+import { pruneStep } from "./prune.js";
 import { recordStep, reportStep, tick } from "./tick.js";
 
 const usd = (micro: bigint) => `$${(Number(micro) / 1_000_000).toFixed(4)}`;
@@ -58,6 +59,10 @@ async function main() {
 
   if (command === "record") {
     console.log(await recordStep(connection, store));
+    return;
+  }
+  if (command === "prune") {
+    console.log(await pruneStep(store, new Date(), true));
     return;
   }
   if (command === "mirror") {
