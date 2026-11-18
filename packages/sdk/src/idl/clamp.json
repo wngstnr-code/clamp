@@ -1,0 +1,1111 @@
+{
+  "address": "wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC",
+  "metadata": {
+    "name": "clamp",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Clamp: two-way GPU rental price lock (index, series, pool, vault, locks)"
+  },
+  "instructions": [
+    {
+      "name": "init_index",
+      "docs": [
+        "Creates the index of a class and binds its observation ring. Admin only."
+      ],
+      "discriminator": [
+        206,
+        236,
+        58,
+        58,
+        171,
+        221,
+        237,
+        57
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "class_config"
+        },
+        {
+          "name": "index_state",
+          "writable": true
+        },
+        {
+          "name": "observations",
+          "docs": [
+            "Fresh account of `Observations::SIZE` bytes owned by this program and",
+            "still all zero (`zero` checks both and writes the discriminator)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "class_id",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "docs": [
+        "Creates the global config. Upgrade authority only, once."
+      ],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "treasury"
+        },
+        {
+          "name": "program",
+          "address": "wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC"
+        },
+        {
+          "name": "program_data"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitializeParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_class",
+      "docs": [
+        "Creates or updates a GPU class. Admin only."
+      ],
+      "discriminator": [
+        88,
+        208,
+        86,
+        138,
+        241,
+        160,
+        255,
+        115
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "class_config",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "class_id",
+          "type": "u8"
+        },
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "ClassParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "submit_report",
+      "docs": [
+        "Stores a reporter's report and updates the index when allowed."
+      ],
+      "discriminator": [
+        27,
+        178,
+        64,
+        9,
+        20,
+        46,
+        250,
+        14
+      ],
+      "accounts": [
+        {
+          "name": "reporter",
+          "signer": true
+        },
+        {
+          "name": "class_config"
+        },
+        {
+          "name": "index_state",
+          "writable": true
+        },
+        {
+          "name": "observations",
+          "writable": true,
+          "relations": [
+            "index_state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "class_id",
+          "type": "u8"
+        },
+        {
+          "name": "prices",
+          "type": {
+            "array": [
+              "u64",
+              6
+            ]
+          }
+        },
+        {
+          "name": "capacities",
+          "type": {
+            "array": [
+              "u32",
+              6
+            ]
+          }
+        },
+        {
+          "name": "raw_hashes",
+          "type": {
+            "array": [
+              {
+                "array": [
+                  "u8",
+                  32
+                ]
+              },
+              6
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ClassConfig",
+      "discriminator": [
+        12,
+        14,
+        218,
+        247,
+        8,
+        85,
+        10,
+        250
+      ]
+    },
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "IndexState",
+      "discriminator": [
+        39,
+        84,
+        33,
+        207,
+        234,
+        99,
+        126,
+        210
+      ]
+    },
+    {
+      "name": "Observations",
+      "discriminator": [
+        119,
+        205,
+        13,
+        6,
+        93,
+        29,
+        178,
+        203
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "IndexUpdated",
+      "discriminator": [
+        57,
+        221,
+        94,
+        47,
+        121,
+        227,
+        38,
+        114
+      ]
+    },
+    {
+      "name": "ReportSubmitted",
+      "discriminator": [
+        30,
+        14,
+        109,
+        53,
+        161,
+        40,
+        129,
+        244
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidFeeParams",
+      "msg": "Fee or allocation parameter out of range"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidClassParams",
+      "msg": "Class parameter out of range"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidClassId",
+      "msg": "Class id must be 1 or higher"
+    },
+    {
+      "code": 6003,
+      "name": "SourcesLocked",
+      "msg": "The sources of a class cannot change after it is created"
+    },
+    {
+      "code": 6004,
+      "name": "ClassDisabled",
+      "msg": "The class is disabled"
+    },
+    {
+      "code": 6005,
+      "name": "NotReporter",
+      "msg": "The signer is not a registered reporter of this class"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidReport",
+      "msg": "A price was sent for a source slot the class does not use"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidObservationsAccount",
+      "msg": "The observations account has the wrong size"
+    },
+    {
+      "code": 6008,
+      "name": "TreasuryMintMismatch",
+      "msg": "Collateral mint and treasury do not match"
+    },
+    {
+      "code": 6009,
+      "name": "MathOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6010,
+      "name": "MathInvalidInput",
+      "msg": "Invalid input to a math function"
+    }
+  ],
+  "types": [
+    {
+      "name": "ClassConfig",
+      "docs": [
+        "Settings of one GPU class. PDA `[\"class\", class_id]`.",
+        "",
+        "Reporters, quorum, bounds and widths affect future updates and future",
+        "series only. The sources are fixed when the class is created, because the",
+        "stored reports are read by source slot."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "class_id",
+            "docs": [
+              "1 = RTX 4090, 2 = H100. 0 means the account was just created."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "name",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "reporters",
+            "type": {
+              "array": [
+                "pubkey",
+                5
+              ]
+            }
+          },
+          {
+            "name": "reporter_count",
+            "type": "u8"
+          },
+          {
+            "name": "min_reporters",
+            "type": "u8"
+          },
+          {
+            "name": "sources",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "Source"
+                  }
+                },
+                6
+              ]
+            }
+          },
+          {
+            "name": "source_count",
+            "type": "u8"
+          },
+          {
+            "name": "min_sources",
+            "type": "u8"
+          },
+          {
+            "name": "min_total_weight",
+            "type": "u8"
+          },
+          {
+            "name": "min_price",
+            "docs": [
+              "Sanity bounds for one reported price, micro-USD per GPU-hour."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_price",
+            "type": "u64"
+          },
+          {
+            "name": "max_step_ppm",
+            "type": "u32"
+          },
+          {
+            "name": "half_width_ppm",
+            "docs": [
+              "Band half width per series kind: daily, weekly, monthly."
+            ],
+            "type": {
+              "array": [
+                "u32",
+                3
+              ]
+            }
+          },
+          {
+            "name": "current_series",
+            "docs": [
+              "The latest series per kind (set from M2 on)."
+            ],
+            "type": {
+              "array": [
+                "pubkey",
+                3
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClassParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "reporters",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "min_reporters",
+            "type": "u8"
+          },
+          {
+            "name": "sources",
+            "docs": [
+              "Must equal the stored sources when the class already exists."
+            ],
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Source"
+                }
+              }
+            }
+          },
+          {
+            "name": "min_sources",
+            "type": "u8"
+          },
+          {
+            "name": "min_total_weight",
+            "type": "u8"
+          },
+          {
+            "name": "min_price",
+            "type": "u64"
+          },
+          {
+            "name": "max_price",
+            "type": "u64"
+          },
+          {
+            "name": "max_step_ppm",
+            "type": "u32"
+          },
+          {
+            "name": "half_width_ppm",
+            "type": {
+              "array": [
+                "u32",
+                3
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Config",
+      "docs": [
+        "Global settings. PDA `[\"config\"]`.",
+        "",
+        "The layout is final: it must not change once the account exists on devnet",
+        "(architecture 3.1). New fields go into `_reserved`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_mint",
+            "docs": [
+              "Collateral of every series (tUSDC on devnet)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "docs": [
+              "Token account of `collateral_mint` that receives protocol fees."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "trade_fee_bps",
+            "docs": [
+              "Copied into each new series."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "protocol_share_bps",
+            "docs": [
+              "Share of each trade fee that goes to the treasury."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "series_alloc_bps",
+            "docs": [
+              "Vault NAV allocated to one series when it is seeded."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "IndexState",
+      "docs": [
+        "Live index of one class. PDA `[\"index\", class_id]`.",
+        "",
+        "`last_*` and `cum_*` equal the newest observation once `update_count > 0`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "class_id",
+            "type": "u8"
+          },
+          {
+            "name": "observations",
+            "docs": [
+              "The `Observations` account bound by `init_index`."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "last_ts",
+            "type": "i64"
+          },
+          {
+            "name": "last_price",
+            "type": "u64"
+          },
+          {
+            "name": "cum_price",
+            "type": "u128"
+          },
+          {
+            "name": "cum_valid",
+            "type": "u64"
+          },
+          {
+            "name": "obs_index",
+            "docs": [
+              "Ring slot of the newest observation."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "obs_count",
+            "docs": [
+              "Filled ring slots."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "update_count",
+            "type": "u64"
+          },
+          {
+            "name": "reports",
+            "docs": [
+              "Indexed by reporter slot of the class."
+            ],
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "Report"
+                  }
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "IndexUpdated",
+      "docs": [
+        "An index update was accepted and recorded (spec 6.2 step 7, 6.3)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "class_id",
+            "type": "u8"
+          },
+          {
+            "name": "ts",
+            "type": "i64"
+          },
+          {
+            "name": "price",
+            "docs": [
+              "Recorded price after the step limit."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "candidate",
+            "docs": [
+              "Weighted median before the step limit."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "reporter_count",
+            "docs": [
+              "Fresh reports that formed this update."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "sources",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "SourceUsed"
+                  }
+                },
+                6
+              ]
+            }
+          },
+          {
+            "name": "cum_price",
+            "type": "u128"
+          },
+          {
+            "name": "cum_valid",
+            "type": "u64"
+          },
+          {
+            "name": "update_count",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "trade_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "protocol_share_bps",
+            "type": "u16"
+          },
+          {
+            "name": "series_alloc_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ObservationSlot",
+      "docs": [
+        "One stored index update. `cum_price` is split into two `u64` halves so the",
+        "struct has 8-byte alignment and no padding (zero-copy safe). 40 bytes."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ts",
+            "type": "i64"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "cum_price_lo",
+            "type": "u64"
+          },
+          {
+            "name": "cum_price_hi",
+            "type": "u64"
+          },
+          {
+            "name": "cum_valid",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Observations",
+      "docs": [
+        "Ring of index updates of one class (spec 6.3).",
+        "",
+        "Not a PDA: about 80 KB is more than a program can allocate in one",
+        "instruction, so the setup script creates it with a fresh keypair at full",
+        "size, owned by this program, and `init_index` binds it to the class."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "items",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "ObservationSlot"
+                  }
+                },
+                2048
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Report",
+      "docs": [
+        "The latest report of one reporter slot."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "reporter",
+            "docs": [
+              "Who sent it. A report counts only while this key is still in the slot."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "ts",
+            "type": "i64"
+          },
+          {
+            "name": "used",
+            "docs": [
+              "Already part of an accepted update."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "prices",
+            "docs": [
+              "By source slot. 0 = the source did not answer."
+            ],
+            "type": {
+              "array": [
+                "u64",
+                6
+              ]
+            }
+          },
+          {
+            "name": "capacities",
+            "type": {
+              "array": [
+                "u32",
+                6
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReportSubmitted",
+      "docs": [
+        "A reporter's report was stored (spec 6.2). Carries the raw response hashes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "class_id",
+            "type": "u8"
+          },
+          {
+            "name": "reporter",
+            "type": "pubkey"
+          },
+          {
+            "name": "ts",
+            "type": "i64"
+          },
+          {
+            "name": "prices",
+            "docs": [
+              "By source slot of the class. 0 = the source did not answer."
+            ],
+            "type": {
+              "array": [
+                "u64",
+                6
+              ]
+            }
+          },
+          {
+            "name": "capacities",
+            "type": {
+              "array": [
+                "u32",
+                6
+              ]
+            }
+          },
+          {
+            "name": "raw_hashes",
+            "docs": [
+              "SHA-256 of the archived raw API response, by source slot."
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                6
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Source",
+      "docs": [
+        "One price source of a class, in the order of the report slots."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "source_id",
+            "docs": [
+              "1 Vast.ai, 2 RunPod, 3 Akash, 4 Nosana."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "has_capacity",
+            "docs": [
+              "True: weight by capacity tier. False: use `fixed_weight`."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "fixed_weight",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SourceUsed",
+      "docs": [
+        "One source as it entered an index update."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "source_id",
+            "type": "u8"
+          },
+          {
+            "name": "price",
+            "docs": [
+              "Combined price across reporters. 0 = the source was left out."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "capacity",
+            "type": "u32"
+          },
+          {
+            "name": "weight",
+            "docs": [
+              "Weight in the weighted median. 0 = left out."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
