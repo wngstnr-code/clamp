@@ -165,6 +165,9 @@ Full details go in `docs/build-and-deploy.md`. Add each command to this table wh
 | Copy the IDL into the SDK (after `anchor build`) | `pnpm idl:sync` |
 | SDK tests | `pnpm test:sdk` |
 | SDK build | `pnpm build:sdk` |
+| Devnet setup (idempotent) | `pnpm --filter @clamp/backend setup:devnet` |
+| One reporter tick from a laptop | `WORKER_KEYPAIR_PATH=~/.config/solana/clamp/worker.json pnpm --filter @clamp/backend tick` |
+| Verify a report transaction | `pnpm --filter @clamp/backend verify <signature>` |
 | Read-only SQL on the project | `pnpm exec supabase db query --remote --read-only "<sql>"` |
 
 ## 12. Definition of done (for any task)

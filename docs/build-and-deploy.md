@@ -99,7 +99,7 @@ Deploy order on devnet:
 
 1. Deploy `test-usdc`, create the tUSDC mint.
 2. Deploy `clamp`, call `initialize` with the tUSDC mint and the treasury account, signed by the upgrade authority (the deployer).
-3. Create the `Observations` account per class with a fresh keypair at full size (81,928 bytes, about 0.57 SOL rent each), owned by the `clamp` program, all zero (D-051). The setup script does this with a system `create_account` instruction.
+3. Create the `Observations` account per class with a fresh keypair at full size (81,928 bytes, 0.417 SOL rent each on 2026-11-18), owned by the `clamp` program, all zero (D-051). The setup script does this with a system `create_account` instruction.
 4. Call `set_class` with the reporter keys and `min_reporters = 1`, then `init_index`.
 5. Start the worker. Check the first `submit_report` and the first index update on an explorer. Check one report by hand: raw file, hash, recomputed price, on-chain value.
 5b. Start reporters 2 and 3 on their own platforms, add their keys with `set_class`, raise `min_reporters` to 2.
@@ -181,13 +181,16 @@ pnpm test         # vitest: request dedupe, failures, report arguments, event ro
 pnpm typecheck
 ```
 
-Not run yet (need the M1 program on devnet, stage 5):
+Run on 2026-11-18 against devnet (with `WORKER_KEYPAIR_PATH=~/.config/solana/clamp/worker.json` in front, or in `.env`):
 
 ```
-pnpm tick         # one tick: report (archive raw files, submit_report per class, rows) then record
-pnpm report       # step 1 only
-pnpm record       # step 2 only
+pnpm setup:devnet       # steps 1 to 4 of the deploy order below, idempotent, devnet only
+pnpm tick               # one tick: report (archive raw files, submit_report per class, rows) then record
+pnpm record             # step 2 only
+pnpm verify <signature> # recompute a report from its public raw files and compare with the chain
 ```
+
+`pnpm report` (step 1 only) uses the same code as `tick`.
 
 Local runs read the root `.env`. Set `WORKER_KEYPAIR_PATH=~/.config/solana/clamp/worker.json` there for local runs (a path, not the key).
 

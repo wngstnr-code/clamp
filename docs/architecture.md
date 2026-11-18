@@ -112,7 +112,7 @@ pub struct Report {
 }
 
 // NOT a PDA (D-051): a keypair account created by the setup script at full size
-// (8 + 2048 * 40 = 81,928 bytes, rent about 0.57 SOL), owned by the program,
+// (8 + 2048 * 40 = 81,928 bytes, rent 0.417 SOL on devnet), owned by the program,
 // bound to the class by init_index and checked through IndexState.observations.
 // Zero-copy. cum_price is split into two u64 halves (8-byte alignment, no padding).
 pub struct Observations { items: [ObservationSlot; 2048] }

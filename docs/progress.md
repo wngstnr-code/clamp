@@ -24,7 +24,7 @@ Update this file at the end of every session and after every milestone. Newest e
 1. ~~Install the Solana CLI and Anchor~~ (done 2026-11-18: Agave 4.4.1, Anchor 1.2.2, solana-verify 0.5.2).
 2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Step 3 done: empty `clamp` and `test-usdc` programs, `Anchor.toml`, Cargo workspace. Step 4 done: deployer, worker and two test users in `~/.config/solana/clamp/` (addresses in `build-and-deploy.md` section 2). Next: the user funds deployer and worker, then the verifiable build spike (step 5, Docker must run).
 3. ~~Try a verifiable build once with an empty program and check it against devnet~~ (done 2026-11-18, hashes match). Step 6 done: Supabase project `clamp` (Singapore) linked, first migration applied, access checked. The user filled `.env` (Supabase URL, anon key, service role key), checked: anon read 200, anon write 401, service read 200.
-4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). ~~M1 stage 3: SDK and source rules~~ (done 2026-11-18). M1 stage 4 code done (2026-11-18): `backend/` with report and record steps, dry run on live data works. Next: deploy to Vercel and pg_cron (needs the user), then M1 stage 5 (program on devnet).
+4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). ~~M1 stage 3: SDK and source rules~~ (done 2026-11-18). M1 stage 4 code done (2026-11-18): `backend/` with report and record steps, dry run on live data works. M1 stage 5 done (2026-11-18): the M1 program is on devnet (verifiable, hashes match), setup done, first updates sent from a laptop and verified. Next: deploy the backend to Vercel and start pg_cron every 15 minutes (needs the user).
 
 ### AG (web app)
 
@@ -145,17 +145,29 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 
 | Thing | Address | Date |
 |---|---|---|
-| Program `clamp` (empty M0 build, verifiable, commit `6f0c0ef`, hash `c950400bc1cb0c7018f33937fe8192247dec5b8ce0f16439898fa9f0d6470682`, upgrade authority = deployer) | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` | 2026-11-18 |
-| Program `test-usdc` | | |
-| tUSDC mint | | |
-| Config, Vault | | |
-| Reporter keys (public) | | |
+| Program `clamp` (M1 index, verifiable build of commit `677f254`, hash `0e65886cea8b90e9ee67e5c270046cc70d158dfb92cb05b9f717d7f47528a8af`, upgrade authority = deployer) | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` | 2026-11-18 |
+| Earlier `clamp` build (empty M0 program, commit `6f0c0ef`, hash `c950400b...`) | same address, replaced | 2026-11-18 |
+| Program `test-usdc` | not deployed yet (M2) | |
+| tUSDC mint (6 decimals, mint authority = deployer until the faucet takes it over in M2) | `7Cy32ram7nmVKVzty5Bw1Px3t9Dp2cTjXC1PmbEJdt4L` | 2026-11-18 |
+| Treasury (tUSDC token account of the deployer) | `Hjfg7Qysrx2NaidVmiLxgmCUT6o9mfnbG8tCsrrJkvif` | 2026-11-18 |
+| Config | `7yFBESGPYcdomHUBCwgE33im7fGYdu4GqPCzoDLqKZk2` | 2026-11-18 |
+| Class 1 RTX 4090: ClassConfig, IndexState | `DNu7f1q7gH6Je7DzBszCDouadGYfZnTUhYxsAhU5stpa`, `AALSnfuAPegBmMthTWJ8KEXFEbz8LcgdfDbw997j3sTq` | 2026-11-18 |
+| Class 2 H100: ClassConfig, IndexState | `2ADhvfNd62U51EKMmPWFYNVRWbHjjxxed2S1wth3HaSW`, `8ZAzFLdgjjnhQzb7rHUy3ELsVqyrLqNxtKSjtZv6uH62` | 2026-11-18 |
+| Reporters | class 1 and 2: worker `FxgwWh2iMLftA5PNTKCoXyDv9BN6JbERg16Qj4f8r2Bn` only, `min_reporters = 1` | 2026-11-18 |
+| First index updates | RTX 4090 $0.3636 (tx `5v9i2za1...`), H100 $2.71 (tx `e9hoHr6S...`), both checked with `pnpm verify`: every source matches its public raw file | 2026-11-18 |
 
 ## Repository
 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-18, M1 stage 5 (Wangsit)
+
+- Verifiable build of the M1 program (commit `677f254`, hash `0e65886c...`), upgraded on devnet (program grew from 54 KB to 354 KB), on-chain hash equals the local hash.
+- `pnpm setup:devnet` (`backend/src/setup-devnet.ts`, idempotent, devnet only): tUSDC mint, treasury, `initialize`, `set_class` for RTX 4090 and H100 (reporter = worker, quorum 1), Observations accounts plus `init_index`. Observations rent is 0.417 SOL per class (less than estimated).
+- First tick from a laptop: RTX 4090 $0.3636, H100 $2.71. Supabase holds 8 source rows, 2 index updates and the crank log. `pnpm verify <signature>` matched every source of both reports against the public raw files. The SDK reads the index from devnet.
+- Fixed: the record step counted setup transactions (no events) as new.
 
 ### 2026-11-18, M1 stage 4 (Wangsit)
 

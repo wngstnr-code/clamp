@@ -36,12 +36,12 @@ M0 started on 2026-11-18 (D-047).
 
 ## M1: Index live (2026-11-18 to 2026-11-20)
 
-- [ ] W: `math/median.rs` and `math/twap.rs` with unit tests
-- [ ] W: `initialize`, `set_class`, `init_index`, `submit_report`, events
-- [ ] W: source rules for RTX 4090 and H100 in the SDK, tested on saved real responses. Class configs on devnet.
+- [x] W: `math/median.rs` and `math/twap.rs` with unit tests
+- [x] W: `initialize`, `set_class`, `init_index`, `submit_report`, events
+- [x] W: source rules for RTX 4090 and H100 in the SDK, tested on saved real responses. Class configs on devnet.
 - [ ] W: backend tick steps 1 and 2 (report, record), deployed, triggered every 15 minutes. Reporter 1 live with `min_reporters = 1`.
 - [ ] W: reporters 2 and 3 live on other platforms, then `min_reporters = 2`
-- [ ] W: SDK: IDL, PDA helpers, `getIndex`, `getTwap`, `verifyReport`
+- [x] W: SDK: IDL, PDA helpers, `getIndex`, `getTwap`, `verifyReport`
 - [ ] AG: index pages: live number, history chart, per-source table with status, reporter count per update, links to update transactions and raw files
 - [ ] AG: landing page first version with the live index number
 
