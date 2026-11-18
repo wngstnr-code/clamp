@@ -292,6 +292,7 @@ Reporters fetch at slightly different moments, so their numbers can differ a lit
 - The same math as the program in TypeScript (`median`, `twap`, `pool`, `vault`), tested against the same vectors as the Rust code, for quotes in the UI and for the proof page.
 - The source rules of section 3.6.
 - Shared math vectors in `packages/sdk/test/vectors/index-math.json`, read by both the Rust tests (`programs/clamp/tests/test_vectors.rs`) and the SDK tests.
+- Market readers and quotes (`market-reader.ts`, M2): `getSeries`, `listSeries`, `currentSeries`, `getVault` (NAV and share price valued like `withdraw`), `seriesFairValue` and `poolForTrade` (mirror of the program's valuation and re-centering), `quoteBuy`, `quoteSell`, `quoteCostFor` (blocked reasons: not seeded, closed, paused).
 - Readers: `getIndex(class)`, `getObservations(class)`, `getTwap(class, from, to)`, `getSeries`, `getLocks(owner)`, `getVault`, `verifyReport(signature)` and `verifySettlement(series)`.
 - This is also the public SDK of product part 6. A Rust reader for other programs is a stretch goal.
 

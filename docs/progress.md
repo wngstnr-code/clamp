@@ -36,7 +36,7 @@ Update this file at the end of every session and after every milestone. Newest e
    - **Units:** prices are micro-USD per GPU-hour (`340000` = $0.34), timestamps are unix seconds. Class 1 = RTX 4090, 2 = H100. Source 1 Vast.ai, 2 RunPod, 3 Akash, 4 Nosana.
    - **History for charts:** the Supabase tables `index_updates` and `source_ticks` (public read with the anon key, `architecture.md` section 5.1). They fill once reporter 1 runs (M1 stage 4).
    - Readers in `packages/sdk` (since M1 stage 3): `getIndex`, `getObservations`, `getTwap`, `twapFromObservations`, `verifyReport`, PDA helpers, class specs with a `description` per source for the index page (`RTX4090`, `H100`, `SOURCE_NAMES`). Build with `pnpm build:sdk`.
-   - Not deployed yet: the devnet program still holds the empty M0 build until M1 stage 5.
+   - Market (since M2): the program on devnet has series, pairs, settlement, redeem, the vault and the pool. `packages/sdk` has `currentSeries(conn, 1, kind)`, `listSeries`, `getSeries`, `getVault` (NAV, share price), `quoteBuy` / `quoteSell` / `quoteCostFor` (equal to what the program does, including re-centering), PDAs (`seriesPda`, `seriesAccounts`, `vaultPda`, `sharesMintPda`, `idlePda`, faucet PDAs), `TUSDC_MINT`, and both IDLs. Trades need the user's claim ATA to exist: add `createAssociatedTokenAccountIdempotentInstruction` before `buy` (see `backend/src/series-cli.ts`). Instruction accounts: `architecture.md` 3.3. Mirror table for lists: Supabase `series`.
 
 ### The humans
 
@@ -181,6 +181,10 @@ Checked: `anchor build`, 52 Rust tests, 60 SDK tests, 13 backend tests, clippy w
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-18, SDK market readers (Wangsit)
+
+- `packages/sdk/src/market-reader.ts`: series and vault readers, fair value and pool-for-trade mirrors of the program, quotes for buy, sell and an exact number of claims. 7 tests (74 SDK tests). Live check: vault NAV 2,000 tUSDC, share price 1.000000.
 
 ### 2026-11-18, M2 stage 5 (Wangsit)
 
