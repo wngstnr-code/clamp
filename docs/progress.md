@@ -169,7 +169,7 @@ Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, 
 | The raw archive is controlled by the team: files cannot be changed without breaking their on-chain hash, but they can be deleted | low | Stated in the README. Anyone can mirror the bucket. |
 | Program upgrade and admin keys are a hot keypair on Wangsit's laptop | low | Devnet only. Stated in the README. |
 | The record step sees only the last 100 transactions per class | low | Deep review M1 |
-| The raw archive grows about 38 MB a day with three reporters (measured 2026-11-18); the Supabase free plan has 1 GB of storage, so it is full around 2026-12-14. The database itself grows under 1 MB a day (500 MB limit). | low until 2026-12-01 | About 450 MB by submission day. Before December: prune raw files older than 30 days (their hashes stay on-chain) or move old files to a larger free store (for example Cloudflare R2), and say so in the README. |
+| The raw archive grows about 40 MB a day with three reporters (measured 2026-11-18); the Supabase free plan has 1 GB of storage. The database itself grows under 1 MB a day (500 MB limit). | low | Fixed in the M2 deep review: the tick prunes raw files older than 30 days once a day (their hashes stay on-chain), so the archive stays near 1.2 GB at most. That is still above the free 1 GB: before about 2026-12-14, lower the window to 20 days or move old files to a larger free store (for example Cloudflare R2). State it in the README. |
 
 ## Devnet deployments
 
