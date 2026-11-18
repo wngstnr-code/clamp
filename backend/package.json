@@ -14,7 +14,8 @@
     "record": "tsx --env-file=../.env src/cli.ts record",
     "dry-run": "tsx --env-file=../.env src/cli.ts report --dry-run",
     "setup:devnet": "tsx --env-file=../.env src/setup-devnet.ts",
-    "verify": "tsx --env-file=../.env src/cli.ts verify"
+    "verify": "tsx --env-file=../.env src/cli.ts verify",
+    "bundle:reporter": "pnpm --filter @clamp/sdk build && esbuild src/reporter-cli.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/reporter.mjs --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --log-level=warning"
   },
   "dependencies": {
     "@clamp/sdk": "workspace:*",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "24.19.2",
+    "esbuild": "0.28.2",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vitest": "5.0.5"
