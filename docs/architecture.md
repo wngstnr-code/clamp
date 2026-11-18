@@ -255,6 +255,7 @@ TypeScript on Node. One small HTTP app (Hono) deployed as its own Vercel project
 | `POST /cron/tick` | Supabase `pg_cron` every 15 minutes, header `Authorization: Bearer <CRON_SECRET>` | Runs one tick (below) |
 | `POST /cron/report` | Manual checks, same header | Runs only step 1 |
 | `POST /cron/record` | Manual checks, same header | Runs only step 2 |
+| `POST /cron/crank` | Manual checks, same header | Runs steps 3 and 4 |
 | `POST /bill/vast`, `POST /bill/runpod` | The web app | Bill proxy: forwards a read request to the provider with the user's key from the request header and returns the answer. Stores and logs nothing. |
 | `GET /health` | Anyone | Time of the last successful report and the reporter's public key |
 
@@ -262,8 +263,8 @@ One tick, in order (each step is independent and logged in `crank_runs`):
 
 1. **Report**: fetch the four price APIs, apply the source rules, store the raw responses in the storage bucket `raw` under their SHA-256 (D-053) and one row per source in `source_ticks`, then send `submit_report` for each class with the hashes of the raw responses.
 2. **Record**: read the events of the last transactions of each class and store accepted index updates in `index_updates`.
-3. **Crank**: `settle_series` for expired series, `sweep_series`, `create_series` plus `seed_series` when a kind has no live series, `roll_lock` for locks with auto-roll.
-4. **Mirror**: upsert the `series` table from chain.
+3. **Crank** (`backend/src/crank-plan.ts` decides, `crank.ts` sends): `settle_series` for every expired series, `sweep_series` for every settled vault series, `create_series` (then `seed_series` at once) when a managed kind has no live series, `seed_series` for a live managed series that is not seeded. Managed: RTX 4090 daily and weekly. `roll_lock` for locks with auto-roll arrives in M6.
+4. **Mirror**: upsert every series account into the `series` table; `settle_signature` is set by the crank that settled.
 
 The same code runs locally with `pnpm --filter @clamp/backend tick` (or `report`, `record`, and `dry-run`, which fetches and prints the report without archiving or sending). Step 1 stores this worker's rows with its local error texts and raw paths. Step 2 reads the last 100 transactions on each class's IndexState and stores the events of any it has not seen yet, so the reports and updates of reporters 2 and 3 reach the database too (their `raw_path` stays empty because their raw files live in their own archives). The worker signs with a devnet-only keypair that holds a little SOL and nothing else. That key is reporter 1 and also sends the cranks.
 
