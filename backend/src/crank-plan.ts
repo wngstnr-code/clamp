@@ -90,3 +90,20 @@ export function planCrank(input: CrankInput): CrankAction[] {
   }
   return actions;
 }
+
+/** A tick waits at most this long for a series that is about to expire. */
+export const EXPIRY_WAIT = 120;
+
+/**
+ * Seconds to wait so a series expiring right after the tick is settled and
+ * replaced in this tick, not 15 minutes later (which would also push every
+ * later series 15 minutes back). 0 when nothing expires within `limit`.
+ * The result includes a 2 second margin for the chain clock.
+ */
+export function expiryWait(series: SeriesState[], now: number, limit = EXPIRY_WAIT): number {
+  let soonest = Infinity;
+  for (const s of series) {
+    if (!s.settled && s.expiryTs > now && s.expiryTs - now <= limit) soonest = Math.min(soonest, s.expiryTs);
+  }
+  return soonest === Infinity ? 0 : soonest - now + 2;
+}

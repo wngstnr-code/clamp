@@ -5,7 +5,7 @@ import { CLASSES, classPda, idlePda, vaultPda } from "@clamp/sdk";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 
 import { createSeries, program, seedSeries, settleSeries, sweepSeries } from "./clamp-tx.js";
-import { planCrank, type ClassState, type SeriesState } from "./crank-plan.js";
+import { expiryWait, planCrank, type ClassState, type SeriesState } from "./crank-plan.js";
 import type { Store } from "./store.js";
 import type { StepResult } from "./tick.js";
 
@@ -63,10 +63,27 @@ async function loadState(connection: Connection) {
   return { series, classes, vault, accounts: all };
 }
 
+/** The cluster's clock (what the program checks), the local clock as a fallback. */
+async function chainNow(connection: Connection): Promise<number> {
+  try {
+    const t = await connection.getBlockTime(await connection.getSlot("confirmed"));
+    if (t) return t;
+  } catch {
+    // fall through
+  }
+  return Math.floor(Date.now() / 1000);
+}
+
 /** Step 3: settle, sweep, create, seed. Each action is logged on its own. */
 export async function crankStep(connection: Connection, worker: Keypair, store: Store | null): Promise<StepResult[]> {
-  const now = Math.floor(Date.now() / 1000);
-  const state = await loadState(connection);
+  let now = await chainNow(connection);
+  let state = await loadState(connection);
+  const wait = expiryWait(state.series, now);
+  if (wait > 0) {
+    await new Promise((r) => setTimeout(r, wait * 1000));
+    now = await chainNow(connection);
+    state = await loadState(connection);
+  }
   const actions = planCrank({ now, ...state });
   const results: StepResult[] = [];
 
