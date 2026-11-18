@@ -6,10 +6,10 @@ Update this file at the end of every session and after every milestone. Newest e
 
 | Item | Value |
 |---|---|
-| Phase | **M1: the index is live on devnet and updates every 15 minutes (reporter 1).** Earlier: M0 in progress (started 2026-11-18 on the user's go). Steps 1 (toolchain), 2 (repo skeleton, private GitHub repo `wngstnr-code/clamp`) 3 (empty programs that build and pass tests) 4 (devnet keypairs, funded) 5 (verifiable build of the empty `clamp`, deployed to devnet, hashes match) and 6 (Supabase project, schema and bucket) done. Step 7: reporter 3 decided (D-050, team-run on a third platform first). **M0 done for Wangsit.** Next: M1. Work goes stage by stage: after each stage, report and wait. |
-| Current milestone | M1 Index live (Wangsit). AG still on M0. |
+| Phase | **M1 done (2026-11-18)**: the index runs on devnet every 15 minutes with three reporters on three platforms and a quorum of 2. **M2 in progress**: stage 1 (tUSDC faucet) done. Work goes stage by stage: after each stage, report and wait. |
+| Current milestone | M2 Claim market (Wangsit). AG has not started M0 (`web/`). |
 | Deadline | Sunday 2026-11-29, hour not confirmed |
-| Hard dates | Index live on devnet by 2026-11-20. First weekly series created by 2026-11-21. |
+| Hard dates | Index live on devnet by 2026-11-20: **met 2026-11-18**. First weekly series created by 2026-11-21: open. |
 | Days left | 11 (as of 2026-11-18) |
 
 ## Next step (exact)
@@ -122,6 +122,19 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 | A weekly series cannot settle before the deadline unless it starts by 2026-11-21. | Hard dates in the plan, and a labeled short (daily) series (D-023). |
 | The pool price near expiry could be picked off when the outcome is almost known. | Trading closes at `close_ts`, and the pool pauses when fair value leaves `[P_MIN, 1 - P_MIN]`. |
 
+### Deep review of M0 and M1 (2026-11-18)
+
+Checked: `anchor build`, 52 Rust tests, 60 SDK tests, 13 backend tests, clippy with `-D warnings`, rustfmt, TypeScript typecheck, dash check, IDL copy in sync. Spec 6.1 to 6.4, 12 and 13 compared rule by rule with `submit_report`, `set_class`, `init_index`, `initialize`, the source rules and the faucet: all match. Attacker pass over the index, the archive, the cron routes and the keys.
+
+| Finding | Severity | Fix |
+|---|---|---|
+| With exactly two fresh reports, the median per source is their average, so one wrong reporter moves every source halfway to its own number (bounded by the sanity bounds and the 10% step limit per update, but it can drift over many updates). With the schedules at :00, :05 and :10, most updates form from two reports. | medium | Open, needs a decision (spec 6.2 change): wait for all registered reporters up to a time limit, so a normal update has three reports. |
+| A report can carry a price without a raw hash, which leaves no public evidence for that price. | medium | Open, needs a decision (spec 6.2 change): refuse a price above 0 without a hash. Our reporters already always send one. |
+| The record step reads only the last 100 transactions per class (about 8 hours at 12 a hour). After a longer backend outage, history between is missing in Supabase (it stays on-chain). | low | Known issue. A backfill command can be added if it happens. |
+| The SDK carries only the `clamp` IDL; the web faucet page will need the `test_usdc` IDL. | low | Add with the M2 SDK work. |
+| The env table in `architecture.md` did not list the reporter variables. | low | Fixed: `REPORTER_KEYPAIR`, `ARCHIVE_URL`. |
+| The public reporter bundle did not say which source commit it was built from. | low | Fixed: `publish-reporter.sh` puts the source commit in the commit message. |
+
 ## Known issues and limits
 
 | Issue | Severity | Note |
@@ -138,6 +151,10 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 | The legal status is not resolved | medium | Devnet and test tokens only |
 | The provider key passes through our proxy | low | Read-only scope, never stored, invoice file as the other way |
 | The name is shared with another crypto product | low | D-037 |
+| The reporter 2 dispatch token expires on 2027-02-16 | low | Renew it in Vault (`build-and-deploy.md`, reporters table) |
+| The raw archive is controlled by the team: files cannot be changed without breaking their on-chain hash, but they can be deleted | low | Stated in the README. Anyone can mirror the bucket. |
+| Program upgrade and admin keys are a hot keypair on Wangsit's laptop | low | Devnet only. Stated in the README. |
+| The record step sees only the last 100 transactions per class | low | Deep review M1 |
 
 ## Devnet deployments
 

@@ -357,6 +357,8 @@ Until a part of the program exists on devnet, AG builds the pages that read real
 | `SUPABASE_SERVICE_ROLE_KEY` | backend | **yes** |
 | `WORKER_KEYPAIR` | backend | **yes** (devnet only). The keypair file content (a JSON array of 64 numbers). Reporter 1 and crank sender. Every other reporter sets its own key under the same name in its own deployment. |
 | `WORKER_KEYPAIR_PATH` | backend, local runs only | no (a path). Points to the keypair file instead of `WORKER_KEYPAIR`. Never set on Vercel. |
+| `REPORTER_KEYPAIR` | standalone reporter (reporters 2 and 3) | **yes** (devnet only). Its own keypair, set as a GitHub Actions secret or a Netlify env variable by the user. |
+| `ARCHIVE_URL` | standalone reporter | no. Defaults to `https://clamp-backend.vercel.app/archive`. |
 | `CRON_SECRET` | backend, Supabase cron job | **yes** |
 
 Secrets are set in the Vercel and Supabase dashboards by the user. They are never written into a file in the repo, into chat or into logs.
