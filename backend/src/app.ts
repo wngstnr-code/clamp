@@ -2,9 +2,11 @@
 
 import { timingSafeEqual } from "node:crypto";
 
-import { Connection } from "@solana/web3.js";
+import { CLASSES, classPda, clampProgram, sha256Hex } from "@clamp/sdk";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { Hono } from "hono";
 
+import { ARCHIVE_MAX_AGE_SECS, ARCHIVE_MAX_BYTES, verifyArchive } from "./archive-auth.js";
 import { loadEnv } from "./env.js";
 import { Store } from "./store.js";
 import { recordStep, reportStep, tick } from "./tick.js";
@@ -30,7 +32,55 @@ function context() {
   };
 }
 
+/** Registered reporter keys of every class, cached for a minute. */
+let reporterCache: { at: number; keys: Set<string> } | null = null;
+async function registeredReporters(connection: Connection): Promise<Set<string>> {
+  if (reporterCache && Date.now() - reporterCache.at < 60_000) return reporterCache.keys;
+  const program = clampProgram(connection);
+  const keys = new Set<string>();
+  for (const spec of Object.values(CLASSES)) {
+    const cls = await program.account.classConfig.fetchNullable(classPda(spec.classId));
+    if (!cls) continue;
+    for (const r of cls.reporters.slice(0, cls.reporterCount)) keys.add(r.toBase58());
+  }
+  reporterCache = { at: Date.now(), keys };
+  return keys;
+}
+
 export const app = new Hono();
+
+/**
+ * Shared raw archive (D-054). The file is stored under the SHA-256 of the
+ * bytes, so nobody can change a file behind an on-chain hash. Only signed
+ * uploads from registered reporters are accepted.
+ */
+app.post("/archive", async (c) => {
+  const env = loadEnv();
+  if (!env.supabaseUrl || !env.supabaseServiceKey) return c.json({ error: "not configured" }, 500);
+  const reporter = c.req.header("x-reporter") ?? "";
+  const ts = Number(c.req.header("x-timestamp"));
+  const signature = c.req.header("x-signature") ?? "";
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isInteger(ts) || Math.abs(now - ts) > ARCHIVE_MAX_AGE_SECS) return c.json({ error: "stale timestamp" }, 400);
+
+  let key: PublicKey;
+  try {
+    key = new PublicKey(reporter);
+  } catch {
+    return c.json({ error: "bad reporter key" }, 400);
+  }
+  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  if (bytes.length === 0 || bytes.length > ARCHIVE_MAX_BYTES) return c.json({ error: "bad size" }, 413);
+  const sha256 = await sha256Hex(bytes);
+  if (!verifyArchive(key.toBytes(), sha256, ts, signature)) return c.json({ error: "bad signature" }, 401);
+
+  const connection = new Connection(env.rpcUrl, "confirmed");
+  if (!(await registeredReporters(connection)).has(key.toBase58())) return c.json({ error: "not a registered reporter" }, 403);
+
+  const store = Store.connect(env.supabaseUrl, env.supabaseServiceKey);
+  const path = await store.archive({ key: sha256, bytes, sha256, status: 200 });
+  return c.json({ path, sha256 });
+});
 
 app.get("/health", async (c) => {
   const env = loadEnv();
@@ -49,7 +99,7 @@ app.post("/cron/tick", async (c) => {
 app.post("/cron/report", async (c) => {
   if (!authorized(c.req.header("authorization"), loadEnv().cronSecret)) return c.json({ error: "unauthorized" }, 401);
   const { connection, worker, store } = context();
-  return c.json(json(await reportStep(connection, worker, store)));
+  return c.json(json(await reportStep(connection, worker, store, store)));
 });
 
 app.post("/cron/record", async (c) => {

@@ -61,7 +61,7 @@ async function main() {
   }
   if (!env.worker) throw new Error("WORKER_KEYPAIR or WORKER_KEYPAIR_PATH is required");
   console.log(`reporter ${env.worker.publicKey.toBase58()} on ${env.rpcUrl}`);
-  const results = command === "report" ? await reportStep(connection, env.worker, store) : await tick(connection, env.worker, store);
+  const results = command === "report" ? await reportStep(connection, env.worker, store, store) : await tick(connection, env.worker, store);
   for (const r of results) console.log(`${r.ok ? "ok  " : "FAIL"} ${r.action} ${r.detail}${r.signature ? ` ${r.signature}` : ""}`);
   if (results.some((r) => !r.ok)) process.exitCode = 1;
 }

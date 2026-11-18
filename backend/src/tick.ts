@@ -5,6 +5,7 @@ import { indexPda, type ClassSpec } from "@clamp/sdk";
 import { Connection, Keypair } from "@solana/web3.js";
 
 import { readLogs, sendReport } from "./chain.js";
+import type { Archiver } from "./archiver.js";
 import { rowsFromLogs } from "./events.js";
 import { allClasses, buildReport, fetchAll, requestKey, type ClassReport } from "./fetch-sources.js";
 import type { Store } from "./store.js";
@@ -19,11 +20,16 @@ export interface StepResult {
 const summary = (r: ClassReport) =>
   r.slots.map((s) => `${s.sourceId}:${s.ok ? s.price.toString() : `none (${s.error})`}`).join(" ");
 
-/** Step 1: fetch, archive, report each class on chain, store the rows. */
+/**
+ * Step 1: fetch, archive, report each class on chain, store the rows.
+ * `db` is null for reporters 2 and 3: they only archive and report, and the
+ * record step of reporter 1 stores their events.
+ */
 export async function reportStep(
   connection: Connection,
   worker: Keypair,
-  store: Store,
+  archiver: Archiver,
+  db: Store | null,
   classes: ClassSpec[] = allClasses(),
   fetchImpl: typeof fetch = fetch,
 ): Promise<StepResult[]> {
@@ -33,7 +39,7 @@ export async function reportStep(
   const paths = new Map<string, string>();
   for (const [key, answer] of answers) {
     if (answer instanceof Error) continue;
-    paths.set(key, await store.archive(answer));
+    paths.set(key, await archiver.archive(answer));
   }
 
   const results: StepResult[] = [];
@@ -50,15 +56,17 @@ export async function reportStep(
           report.slots[i]?.sha256 ? (paths.get(requestKey(s.request)) ?? null) : null,
         ),
       });
-      await store.insertSourceTicks(parsed.ticks);
-      await store.insertIndexUpdates(parsed.updates);
+      if (db) {
+        await db.insertSourceTicks(parsed.ticks);
+        await db.insertIndexUpdates(parsed.updates);
+      }
       const updated = parsed.updates.length > 0 ? ` updated to ${parsed.updates[0]!.price_micro}` : " stored";
       results.push({ action, ok: true, detail: `${summary(report)};${updated}`, signature });
     } catch (e) {
       results.push({ action, ok: false, detail: `${summary(report)}; ${(e as Error).message}` });
     }
   }
-  for (const r of results) await store.logRun(r.action, r.ok, r.detail, r.signature ?? null);
+  if (db) for (const r of results) await db.logRun(r.action, r.ok, r.detail, r.signature ?? null);
   return results;
 }
 
@@ -100,7 +108,7 @@ export async function recordStep(
 }
 
 export async function tick(connection: Connection, worker: Keypair, store: Store): Promise<StepResult[]> {
-  const report = await reportStep(connection, worker, store);
+  const report = await reportStep(connection, worker, store, store);
   const record = await recordStep(connection, store);
   return [...report, record];
 }
