@@ -1,0 +1,139 @@
+# Build and deploy
+
+Status on 2026-11-18: the toolchain is installed on Wangsit's machine (section 1). Nothing is built yet. Every command below is marked **not run yet** until someone has run it once on this project. When you run one, fix it if needed, remove the mark, and add it to the "Key commands" table in `CLAUDE.md`.
+
+## 1. Toolchain
+
+| Tool | Pinned version | Installed on Wangsit's machine (2026-11-18) |
+|---|---|---|
+| Rust (host) | 1.96.0 | yes |
+| Solana CLI (Agave) | **4.4.1** | yes, `~/.local/share/solana/install/active_release/bin` |
+| cargo-build-sbf | 4.5.0 (ships with the CLI), platform tools v1.57, SBF Rust 1.95.0 | yes |
+| Anchor CLI | **1.2.2**, through AVM 1.2.2 | yes, `~/.cargo/bin` |
+| solana-verify | **0.5.2** | yes, `~/.cargo/bin` |
+| Docker | 29.6.2 (needed by `solana-verify build`) | installed, must be running |
+| Node | 24.1.0 | yes |
+| pnpm | 10.33.0 | yes |
+
+Install commands (run on 2026-11-18, macOS arm64):
+
+```
+sh -c "$(curl -sSfL https://release.anza.xyz/v4.4.1/install)"
+cargo install --git https://github.com/otter-sec/anchor --tag v1.2.2 avm --locked --force
+avm install 1.2.2 && avm use 1.2.2
+cargo install solana-verify --version 0.5.2 --locked
+```
+
+Notes: the Anchor repository now lives at `github.com/otter-sec/anchor` (the docs link there). The Solana installer adds its `bin` folder to `~/.zprofile`; open a new terminal after installing. The versions are pinned in the repo (`Anchor.toml`, `rust-toolchain.toml`, `packageManager`) in M0 step 2.
+
+AG needs Node and pnpm for the web app. AG needs the Solana CLI only to make a devnet wallet.
+
+## 2. Accounts, keys and the single env file
+
+- Network: devnet only.
+- Keypairs live in the local Solana keychain (`~/.config/solana/`). Never print them, never commit them.
+
+| Keypair | Purpose |
+|---|---|
+| deployer | Deploys and upgrades the programs, is the config admin |
+| worker | Reporter 1 and crank sender. Holds a little SOL and nothing else. Its secret is also set as `WORKER_KEYPAIR` in the backend's Vercel project by the user. |
+| reporter 2, reporter 3 | One key per extra reporter, each kept by the person who runs that reporter and set as `WORKER_KEYPAIR` in that reporter's own deployment |
+| test users (2 or 3) | Manual tests of renter, owner and depositor flows |
+
+- Claude may create the keypairs. The user funds them from a devnet faucet.
+- One env file: `.env` at the repo root, gitignored. `.env.example` lists the names only. The names are in `architecture.md` section 10.
+- `CLAUDE.md` is tracked in git (D-049). `.gitignore` keeps secrets (`.env`, keypair files) and build output out.
+- Repo: private GitHub repo `wngstnr-code/clamp`, branch `main`. Clone it with `gh repo clone wngstnr-code/clamp`, then `pnpm install`.
+
+## 3. Programs
+
+All not run yet. Adjust to the installed Anchor version.
+
+```
+# build both programs
+anchor build
+
+# unit tests of the pure math and instruction tests
+cargo test
+
+# deploy to devnet
+anchor deploy --provider.cluster devnet
+```
+
+Deploy order on devnet:
+
+1. Deploy `test-usdc`, create the tUSDC mint.
+2. Deploy `clamp`, call `initialize` with the tUSDC mint and the treasury account.
+3. Create the `Observations` account per class at full size (about 98 KB, about 0.69 SOL rent each).
+4. Call `set_class` with the reporter keys and `min_reporters = 1`, then `init_index`.
+5. Start the worker. Check the first `submit_report` and the first index update on an explorer. Check one report by hand: raw file, hash, recomputed price, on-chain value.
+5b. Start reporters 2 and 3 on their own platforms, add their keys with `set_class`, raise `min_reporters` to 2.
+6. Deposit test USDC into the vault, then let the worker create and seed the first series.
+
+After every deploy, write the program ids, the mint and the main account addresses into `progress.md` ("Devnet deployments") and into `.env.example` as comments where they are public.
+
+Upgrades: never change the layout of an account type that has live accounts. See `architecture.md` section 3.1.
+
+### Verified build (required, D-041)
+
+Not run yet. The exact commands depend on the installed tool versions, so test them in M0 with an empty program and then write the working ones here.
+
+1. Commit the code and tag the commit.
+2. Build reproducibly (the verifiable build of Anchor or `solana-verify build`, both use a pinned Docker image). On Apple silicon the image may need emulation.
+3. Deploy that exact build to devnet.
+4. Compare: the hash of the on-chain program must equal the hash of the local verifiable build (`solana-verify get-program-hash -u devnet <program id>` against `solana-verify get-executable-hash <path to .so>`).
+5. Once the repo is public, anyone can run `solana-verify verify-from-repo -u devnet --program-id <program id> <repo url> --commit-hash <commit>`. Put this command in the README.
+6. Log the commit, the program hash and the date in `progress.md` under "Devnet deployments".
+
+Open point: whether explorers show a "verified" badge for devnet programs is not known yet (assumption A17 in `progress.md`). The requirement is met by the reproducible hash match either way.
+
+## 4. Backend
+
+All not run yet.
+
+```
+pnpm install
+pnpm --filter backend tick        # one tick from the local machine
+pnpm --filter backend report      # only the report step (what reporters 2 and 3 run)
+pnpm --filter backend dev         # local HTTP server
+```
+
+- Hosted as its own Vercel project with the root directory `backend/`. Secrets are set in the Vercel dashboard by the user.
+- Database: a Supabase project. Migrations live in `backend/supabase/migrations/`.
+- Schedule: Supabase `pg_cron` with `pg_net` calls the tick route every 15 minutes. Example to adapt (not run yet):
+
+```sql
+select cron.schedule(
+  'clamp-tick',
+  '*/15 * * * *',
+  $$ select net.http_post(
+       url := 'https://<backend host>/cron/tick',
+       headers := jsonb_build_object('x-cron-secret', '<secret>')
+     ) $$
+);
+```
+
+The real secret is typed into the Supabase dashboard by the user. It is never committed.
+
+## 5. Web app
+
+All not run yet.
+
+```
+pnpm --filter web dev
+pnpm --filter web build
+```
+
+Hosted on Vercel with the root directory `web/`. Only `NEXT_PUBLIC_` variables reach the browser.
+
+## 6. Text check
+
+```
+node scripts/check-dashes.mjs
+```
+
+Run on 2026-11-17: passes. It must report no matches before any task is called done and before every commit.
+
+## 7. RPC
+
+The public devnet endpoint is rate limited. The web app and the worker read the endpoint from the env file, so a provider endpoint can be used without a code change.
