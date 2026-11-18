@@ -1,0 +1,72 @@
+{
+  "note": "Shared test vectors for the index math. Read by programs/clamp (Rust) and packages/sdk (TypeScript). Numbers are strings so u64 and u128 values survive JSON.",
+  "median": [
+    { "values": [], "expected": null },
+    { "values": ["7"], "expected": "7" },
+    { "values": ["9", "1", "5"], "expected": "5" },
+    { "values": ["400000", "300000"], "expected": "350000" },
+    { "values": ["1", "2", "3", "4"], "expected": "2" },
+    { "values": ["18446744073709551615", "18446744073709551614"], "expected": "18446744073709551614" }
+  ],
+  "source_weight": [
+    { "has_capacity": true, "capacity": "0", "fixed_weight": 9, "expected": 0 },
+    { "has_capacity": true, "capacity": "1", "fixed_weight": 9, "expected": 1 },
+    { "has_capacity": true, "capacity": "4", "fixed_weight": 9, "expected": 1 },
+    { "has_capacity": true, "capacity": "5", "fixed_weight": 9, "expected": 2 },
+    { "has_capacity": false, "capacity": "100", "fixed_weight": 1, "expected": 1 }
+  ],
+  "combine_source": [
+    {
+      "samples": [["300000", "40"], ["0", "0"], ["320000", "44"], ["9000000", "1"]],
+      "min_price": "50000", "max_price": "5000000", "min_reporters": 2,
+      "expected": ["310000", "42"]
+    },
+    {
+      "samples": [["300000", "40"], ["0", "0"], ["320000", "44"], ["9000000", "1"]],
+      "min_price": "50000", "max_price": "5000000", "min_reporters": 3,
+      "expected": null
+    },
+    { "samples": [["50000", "1"]], "min_price": "50000", "max_price": "5000000", "min_reporters": 1, "expected": ["50000", "1"] },
+    { "samples": [["49999", "1"]], "min_price": "50000", "max_price": "5000000", "min_reporters": 1, "expected": null }
+  ],
+  "weighted_median": [
+    { "entries": [], "expected": null },
+    { "entries": [["5", 0], ["6", 0]], "expected": null },
+    { "entries": [["340000", 2]], "expected": "340000" },
+    { "entries": [["450000", 1], ["300000", 2], ["340000", 2], ["400000", 1]], "expected": "340000" },
+    { "entries": [["300001", 1], ["400000", 1]], "expected": "350000" },
+    { "entries": [["100", 1], ["200", 0], ["300", 1]], "expected": "200" },
+    { "entries": [["484711", 2], ["340000", 2], ["340000", 0], ["363600", 1]], "expected": "363600" },
+    { "entries": [["2402222", 1], ["2690000", 2], ["2730000", 2], ["1193150", 1]], "expected": "2690000" }
+  ],
+  "step_limit": [
+    { "candidate": "500000", "last": "400000", "max_step_ppm": "100000", "expected": "440000" },
+    { "candidate": "100000", "last": "400000", "max_step_ppm": "100000", "expected": "360000" },
+    { "candidate": "420000", "last": "400000", "max_step_ppm": "100000", "expected": "420000" },
+    { "candidate": "777", "last": "0", "max_step_ppm": "100000", "expected": "777" },
+    { "candidate": "0", "last": "15", "max_step_ppm": "100000", "expected": "14" },
+    { "candidate": "100", "last": "15", "max_step_ppm": "100000", "expected": "16" },
+    { "candidate": "900000", "last": "310000", "max_step_ppm": "100000", "expected": "341000" },
+    { "candidate": "60000", "last": "341000", "max_step_ppm": "100000", "expected": "306900" }
+  ],
+  "twap": {
+    "max_gap": 7200,
+    "updates": [
+      { "ts": 10000, "price": "300000" },
+      { "ts": 11800, "price": "400000" },
+      { "ts": 13000, "price": "500000" },
+      { "ts": 60000, "price": "450000" }
+    ],
+    "observations": [
+      { "ts": 10000, "price": "300000", "cum_price": "0", "cum_valid": "0" },
+      { "ts": 11800, "price": "400000", "cum_price": "540000000", "cum_valid": "1800" },
+      { "ts": 13000, "price": "500000", "cum_price": "1020000000", "cum_valid": "3000" },
+      { "ts": 60000, "price": "450000", "cum_price": "4620000000", "cum_valid": "10200" }
+    ],
+    "averages": [
+      { "from": 10000, "to": 13600, "expected": "366666", "counted": "3600" },
+      { "from": 10000, "to": 10000, "expected": null, "counted": "0" },
+      { "from": 13000, "to": 61000, "expected": "493902", "counted": "8200" }
+    ]
+  }
+}
