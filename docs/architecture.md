@@ -280,7 +280,7 @@ Reporters fetch at slightly different moments, so their numbers can differ a lit
 
 ## 6. SDK (`packages/sdk`)
 
-- The generated IDL and types of both programs (copied from the Anchor build).
+- The generated IDL and types of both programs, copied from the Anchor build into `packages/sdk/src/idl/` (`target/` is not in git). Wangsit refreshes the copy in the same commit as every program change.
 - PDA helpers for every row of section 3.2.
 - The same math as the program in TypeScript (`median`, `twap`, `pool`, `vault`), tested against the same vectors as the Rust code, for quotes in the UI and for the proof page.
 - The source rules of section 3.6.

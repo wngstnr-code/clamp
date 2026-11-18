@@ -30,7 +30,13 @@ Update this file at the end of every session and after every milestone. Newest e
 
 1. Scaffold `web/` and connect a devnet wallet.
 2. Set up the scheduled reporter job in AG's GitHub account once the report step exists (reporter 2, D-042).
-3. Start the layout of the index page. It gets real data as soon as reporter 1 writes to Supabase (M1).
+3. Start the index page from the real program interface (ready since 2026-11-18, M1 stage 2). What is final for the index pages:
+   - **IDL and types:** `packages/sdk/src/idl/clamp.json` and `clamp.ts` (copies of the Anchor build, refreshed by Wangsit on every program change). Use them only through `packages/sdk` (CLAUDE.md section 3), never a hand-written copy.
+   - **Accounts to read:** `ClassConfig` (PDA `["class", class_id]`: name, reporters, `min_reporters`, sources, bounds), `IndexState` (PDA `["index", class_id]`: `last_price`, `last_ts`, `update_count`, `reports[]` with each reporter's latest prices), `Observations` (address in `IndexState.observations`, ring of 2,048 entries, newest at `obs_index`, `obs_count` filled). Layouts in `architecture.md` section 3.1.
+   - **Events:** `ReportSubmitted` (per reporter: prices, capacities, raw hashes by source slot) and `IndexUpdated` (price, candidate before the step limit, `reporter_count`, per source `{source_id, price, capacity, weight}`, weight 0 = left out). Fields in `architecture.md` section 3.7.
+   - **Units:** prices are micro-USD per GPU-hour (`340000` = $0.34), timestamps are unix seconds. Class 1 = RTX 4090, 2 = H100. Source 1 Vast.ai, 2 RunPod, 3 Akash, 4 Nosana.
+   - **History for charts:** the Supabase tables `index_updates` and `source_ticks` (public read with the anon key, `architecture.md` section 5.1). They fill once reporter 1 runs (M1 stage 4).
+   - Not deployed yet: the devnet program still holds the empty M0 build until M1 stage 5. Readers like `getIndex` arrive in `packages/sdk` in M1 stage 3.
 
 ### The humans
 
