@@ -173,16 +173,25 @@ Dependencies (pinned): `@anchor-lang/core` 1.2.2, `@solana/web3.js` 1.99.0 (Anch
 
 ## 4. Backend
 
-All not run yet.
+Run on 2026-11-18 (from `backend/`):
 
 ```
-pnpm install
-pnpm --filter backend tick        # one tick from the local machine
-pnpm --filter backend report      # only the report step (what reporters 2 and 3 run)
-pnpm --filter backend dev         # local HTTP server
+pnpm dry-run      # fetch all sources, print each class's report, archive and send nothing
+pnpm test         # vitest: request dedupe, failures, report arguments, event rows
+pnpm typecheck
 ```
 
-- Hosted as its own Vercel project with the root directory `backend/`. Secrets are set in the Vercel dashboard by the user.
+Not run yet (need the M1 program on devnet, stage 5):
+
+```
+pnpm tick         # one tick: report (archive raw files, submit_report per class, rows) then record
+pnpm report       # step 1 only
+pnpm record       # step 2 only
+```
+
+Local runs read the root `.env`. Set `WORKER_KEYPAIR_PATH=~/.config/solana/clamp/worker.json` there for local runs (a path, not the key).
+
+- Hosted as its own Vercel project `clamp-backend` with the root directory `backend/`, Node 24. Vercel serves the Hono app exported by `backend/src/index.ts`. The build command (`pnpm build`) builds the SDK first. Secrets are set in the Vercel dashboard by the user.
 - Database: Supabase project `clamp`, ref `qsszurelcfrzlswkhnkd`, region Southeast Asia (Singapore), URL `https://qsszurelcfrzlswkhnkd.supabase.co`. Migrations live in `supabase/migrations/` at the repo root. The Supabase CLI is a pinned dev dependency (3.2.0), so run it with `pnpm exec supabase` (Homebrew failed on Wangsit's machine because of old Xcode command line tools).
 - Login and link (run once per machine, in a normal terminal, because login opens a browser): `pnpm exec supabase login`, then `pnpm exec supabase link --project-ref qsszurelcfrzlswkhnkd`.
 - Run on 2026-11-18: `pnpm exec supabase db push --remote` (applied the first migration). Checked with the anon key: all four tables readable (HTTP 200), insert refused (HTTP 401). The `raw` bucket exists and is public.
@@ -194,7 +203,7 @@ select cron.schedule(
   '*/15 * * * *',
   $$ select net.http_post(
        url := 'https://<backend host>/cron/tick',
-       headers := jsonb_build_object('x-cron-secret', '<secret>')
+       headers := jsonb_build_object('Authorization', 'Bearer <secret>')
      ) $$
 );
 ```

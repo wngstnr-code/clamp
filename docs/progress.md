@@ -24,7 +24,7 @@ Update this file at the end of every session and after every milestone. Newest e
 1. ~~Install the Solana CLI and Anchor~~ (done 2026-11-18: Agave 4.4.1, Anchor 1.2.2, solana-verify 0.5.2).
 2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Step 3 done: empty `clamp` and `test-usdc` programs, `Anchor.toml`, Cargo workspace. Step 4 done: deployer, worker and two test users in `~/.config/solana/clamp/` (addresses in `build-and-deploy.md` section 2). Next: the user funds deployer and worker, then the verifiable build spike (step 5, Docker must run).
 3. ~~Try a verifiable build once with an empty program and check it against devnet~~ (done 2026-11-18, hashes match). Step 6 done: Supabase project `clamp` (Singapore) linked, first migration applied, access checked. The user filled `.env` (Supabase URL, anon key, service role key), checked: anon read 200, anon write 401, service read 200.
-4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). ~~M1 stage 3: SDK and source rules~~ (done 2026-11-18). Next: M1 stage 4, backend reporter 1 (report and record steps, Vercel, pg_cron).
+4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). ~~M1 stage 3: SDK and source rules~~ (done 2026-11-18). M1 stage 4 code done (2026-11-18): `backend/` with report and record steps, dry run on live data works. Next: deploy to Vercel and pg_cron (needs the user), then M1 stage 5 (program on devnet).
 
 ### AG (web app)
 
@@ -156,6 +156,12 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-18, M1 stage 4 (Wangsit)
+
+- `backend/` (Hono, Node 24): `fetch-sources.ts` (each distinct request once, 15 s timeout, rules applied), `store.ts` (content-addressed raw upload, idempotent upserts, crank log), `events.ts` (event rows), `chain.ts` (`submit_report`), `tick.ts` (report and record steps), `app.ts` (routes with Bearer `CRON_SECRET`), `cli.ts` (tick, report, record, dry-run).
+- SDK: `BN` (from bn.js) and `KeypairWallet` exported, because Node loads `@anchor-lang/core` as CommonJS without those named exports.
+- `pnpm dry-run` on live data: RTX 4090 Vast.ai $0.50 (55 offers), RunPod $0.34, Akash $0.34 (0 available), Nosana $0.3636; H100 $2.40, $2.69, $2.73 (13 available), $1.19. 8 backend tests pass.
 
 ### 2026-11-18, M1 stage 3 (Wangsit)
 

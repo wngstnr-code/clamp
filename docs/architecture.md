@@ -247,10 +247,11 @@ TypeScript on Node. One small HTTP app (Hono) deployed as its own Vercel project
 
 | Route | Called by | Does |
 |---|---|---|
-| `POST /cron/tick` | Supabase `pg_cron` every 15 minutes, with the `CRON_SECRET` header | Runs one tick (below) |
-| `POST /cron/report` | The scheduler of another reporter | Runs only step 1 of the tick, with that reporter's key |
+| `POST /cron/tick` | Supabase `pg_cron` every 15 minutes, header `Authorization: Bearer <CRON_SECRET>` | Runs one tick (below) |
+| `POST /cron/report` | Manual checks, same header | Runs only step 1 |
+| `POST /cron/record` | Manual checks, same header | Runs only step 2 |
 | `POST /bill/vast`, `POST /bill/runpod` | The web app | Bill proxy: forwards a read request to the provider with the user's key from the request header and returns the answer. Stores and logs nothing. |
-| `GET /health` | Anyone | Time of the last successful tick |
+| `GET /health` | Anyone | Time of the last successful report and the reporter's public key |
 
 One tick, in order (each step is independent and logged in `crank_runs`):
 
@@ -259,7 +260,7 @@ One tick, in order (each step is independent and logged in `crank_runs`):
 3. **Crank**: `settle_series` for expired series, `sweep_series`, `create_series` plus `seed_series` when a kind has no live series, `roll_lock` for locks with auto-roll.
 4. **Mirror**: upsert the `series` table from chain.
 
-The same code runs locally with `pnpm --filter backend tick` (or `report` for step 1 only). The worker signs with a devnet-only keypair that holds a little SOL and nothing else. That key is reporter 1 and also sends the cranks.
+The same code runs locally with `pnpm --filter @clamp/backend tick` (or `report`, `record`, and `dry-run`, which fetches and prints the report without archiving or sending). Step 1 stores this worker's rows with its local error texts and raw paths. Step 2 reads the last 100 transactions on each class's IndexState and stores the events of any it has not seen yet, so the reports and updates of reporters 2 and 3 reach the database too (their `raw_path` stays empty because their raw files live in their own archives). The worker signs with a devnet-only keypair that holds a little SOL and nothing else. That key is reporter 1 and also sends the cranks.
 
 Why the bill proxy exists: checked on 2026-11-17, the Vast.ai and RunPod APIs do not send an `Access-Control-Allow-Origin` header to foreign origins, so a browser cannot call them directly. The proxy is stateless. The web app says plainly that the key passes through our server in memory and is never stored. For users who do not want that, the web app also accepts an invoice file that is parsed in the browser only.
 
@@ -351,10 +352,11 @@ Until a part of the program exists on devnet, AG builds the pages that read real
 | `SOLANA_RPC_URL` | backend, scripts | no (may hold a provider key, keep it out of git) |
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | web | no |
 | `NEXT_PUBLIC_CLAMP_PROGRAM_ID`, `NEXT_PUBLIC_TEST_USDC_PROGRAM_ID`, `NEXT_PUBLIC_USDC_MINT` | web, backend | no |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | web | no |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | web (the backend reads the URL too) | no |
 | `NEXT_PUBLIC_BACKEND_URL` | web | no |
 | `SUPABASE_SERVICE_ROLE_KEY` | backend | **yes** |
-| `WORKER_KEYPAIR` | backend | **yes** (devnet only). Reporter 1 and crank sender. Every other reporter sets its own key under the same name in its own deployment. |
+| `WORKER_KEYPAIR` | backend | **yes** (devnet only). The keypair file content (a JSON array of 64 numbers). Reporter 1 and crank sender. Every other reporter sets its own key under the same name in its own deployment. |
+| `WORKER_KEYPAIR_PATH` | backend, local runs only | no (a path). Points to the keypair file instead of `WORKER_KEYPAIR`. Never set on Vercel. |
 | `CRON_SECRET` | backend, Supabase cron job | **yes** |
 
 Secrets are set in the Vercel and Supabase dashboards by the user. They are never written into a file in the repo, into chat or into logs.
