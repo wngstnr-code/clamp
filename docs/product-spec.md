@@ -100,10 +100,10 @@ The H100 class tracks the H100 SXM (80 GB) only: Vast.ai `H100 SXM` offers, RunP
 
 The planned oracle network (Switchboard) shut down on 2026-09-25, so Clamp brings the prices on-chain with its own **reporters** (D-036). A reporter is a registered key that fetches the four public APIs by itself and sends what it saw. Reporters are fully automatic: a scheduled job every 15 minutes. No person types, edits or approves a number (D-042).
 
-`submit_report(class, prices, capacities, raw_hashes)`: signed by a registered reporter. For each source it carries the price (0 when the source did not answer), the capacity, and the SHA-256 hash of the raw API response the reporter archived. The program stores the report, emits it as an event, and then tries an update:
+`submit_report(class, prices, capacities, raw_hashes)`: signed by a registered reporter. For each source it carries the price (0 when the source did not answer), the capacity, and the SHA-256 hash of the raw API response the reporter archived. A price above 0 without a hash is refused (the transaction fails), so every price on-chain has public evidence (D-055). The program stores the report, emits it as an event, and then tries an update:
 
 1. If the last update is less than `MIN_UPDATE_INTERVAL` ago, stop. The report stays stored.
-2. Fresh reports are the stored reports that are at most `REPORT_WINDOW` old and were not used in an update yet. If there are fewer than `min_reporters`, stop.
+2. Fresh reports are the stored reports that are at most `REPORT_WINDOW` old and were not used in an update yet. If there are fewer than `min_reporters`, stop. If not every registered reporter has a fresh report and the oldest fresh report is younger than `REPORT_WAIT`, stop and wait for the others (D-055). So a normal update is formed from all reporters, and a reporter that is down delays the update by at most `REPORT_WAIT`.
 3. Per source: take the fresh prices that are above 0 and inside the class sanity bounds `[min_price, max_price]`. If fewer than `min_reporters` reporters gave one, the source is left out. Otherwise the source price is the median of those prices and the source capacity is the median of those capacities (for an even count, the average of the two middle values, rounded down).
 4. Drop sources with weight 0 (section 6.1). Require at least `min_sources` sources and a total weight of at least `min_total_weight`. Otherwise stop.
 5. `candidate` = weighted median: sort the sources by price, walk up until the running weight reaches half of the total weight. If the running weight hits exactly half, take the average of that price and the next one (rounded down).
@@ -151,6 +151,7 @@ If the oracle stops, time beyond `MAX_GAP` after the last update is not counted.
 | `MAX_GAP` | 7,200 s | Time counted after one observation |
 | `OBS_CARDINALITY` | 2,048 | At least 14 days of history even at the minimum interval |
 | `REPORT_WINDOW` | 900 s | A report older than this is ignored |
+| `REPORT_WAIT` | 600 s | How long an update waits for the missing reporters (D-055) |
 | Reporters | At most 5 per class | The list is set by the config admin |
 | `min_reporters` | 1 while only one reporter runs, then 2 (of 3) | Per class. The index page shows how many reporters stood behind each update. |
 | `max_step` | 100,000 ppm (10%) per update | Per class |
