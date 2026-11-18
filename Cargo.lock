@@ -866,6 +866,7 @@ dependencies = [
  "anchor-spl",
  "bytemuck",
  "litesvm",
+ "serde_json",
  "solana-account",
  "solana-keypair",
  "solana-message",

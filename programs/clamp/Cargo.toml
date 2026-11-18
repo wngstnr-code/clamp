@@ -32,6 +32,7 @@ solana-transaction = "4"
 solana-signer = "3"
 solana-keypair = "3"
 solana-account = "4"
+serde_json = "1.0.151"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
