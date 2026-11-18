@@ -259,6 +259,8 @@ fn init_index_ix(admin: &Pubkey, class_id: u8, observations: Pubkey) -> Instruct
     )
 }
 
+/// A report with a (dummy, non-zero) raw hash for every price above 0, as the
+/// real reporters send it.
 fn report_ix(
     reporter: &Pubkey,
     class_id: u8,
@@ -266,13 +268,30 @@ fn report_ix(
     prices: [u64; MAX_SOURCES],
     capacities: [u32; MAX_SOURCES],
 ) -> Instruction {
+    let mut hashes = NO_HASHES;
+    for (h, p) in hashes.iter_mut().zip(prices) {
+        if p > 0 {
+            *h = [7u8; 32];
+        }
+    }
+    report_ix_with_hashes(reporter, class_id, observations, prices, capacities, hashes)
+}
+
+fn report_ix_with_hashes(
+    reporter: &Pubkey,
+    class_id: u8,
+    observations: Pubkey,
+    prices: [u64; MAX_SOURCES],
+    capacities: [u32; MAX_SOURCES],
+    raw_hashes: [[u8; 32]; MAX_SOURCES],
+) -> Instruction {
     Instruction::new_with_bytes(
         clamp::id(),
         &clamp::instruction::SubmitReport {
             class_id,
             prices,
             capacities,
-            raw_hashes: NO_HASHES,
+            raw_hashes,
         }
         .data(),
         clamp::accounts::SubmitReport {
@@ -869,7 +888,7 @@ fn reject_unregistered_disabled_and_unused_slots() {
 
 #[test]
 fn quorum_of_two_takes_median_per_source() {
-    let mut r = ready(3, 2);
+    let mut r = ready(2, 2);
     report(&mut r, 0, P, C).unwrap();
     assert_eq!(index(&r).update_count, 0, "one report is not a quorum");
 
@@ -878,19 +897,81 @@ fn quorum_of_two_takes_median_per_source() {
     let c2 = [44, 0, 0, 0, 0, 0];
     report(&mut r, 1, p2, c2).unwrap();
     let s = index(&r);
-    assert_eq!(s.update_count, 1);
+    assert_eq!(
+        s.update_count, 1,
+        "both registered reporters are fresh: no wait"
+    );
     // Vast 0.31 (cap 42, w2), RunPod 0.34 (w2), Akash only one report (left out),
     // Nosana 0.30 (w1). Sorted 0.30 w1, 0.31 w2, 0.34 w2: running 1, 3 > 2.5 -> 0.31
     assert_eq!(s.last_price, 310_000);
     assert!(s.reports[0].used && s.reports[1].used);
 
-    // the same two reporters cannot be reused; one new report is not a quorum
+    // used reports are not reused; one new report is not a quorum
     set_time(&mut r.env.svm, T0 + 700);
-    report(&mut r, 2, P, C).unwrap();
+    report(&mut r, 0, P, C).unwrap();
     assert_eq!(index(&r).update_count, 1);
     // a second fresh report completes the quorum
-    report(&mut r, 0, P, C).unwrap();
+    report(&mut r, 1, P, C).unwrap();
     assert_eq!(index(&r).update_count, 2);
+}
+
+/// Spec 6.2 step 2 (D-055): with three reporters the update waits for the
+/// third, so the median per source is formed from three reports.
+#[test]
+fn update_waits_for_every_reporter_then_one_liar_cannot_move_the_median() {
+    let mut r = ready(3, 2);
+    report(&mut r, 0, P, C).unwrap();
+    set_time(&mut r.env.svm, T0 + 300);
+    // reporter 1 lies: every price at the $5 upper bound
+    let liar = [5_000_000, 5_000_000, 5_000_000, 5_000_000, 0, 0];
+    report(&mut r, 1, liar, C).unwrap();
+    assert_eq!(
+        index(&r).update_count,
+        0,
+        "two of three fresh: wait for the third"
+    );
+    set_time(&mut r.env.svm, T0 + 600);
+    report(&mut r, 2, P, C).unwrap();
+    let s = index(&r);
+    assert_eq!(s.update_count, 1);
+    // each source: median of (honest, liar, honest) = honest
+    assert_eq!(s.last_price, 310_000);
+}
+
+#[test]
+fn a_missing_reporter_delays_the_update_by_at_most_report_wait() {
+    let mut r = ready(3, 2);
+    report(&mut r, 0, P, C).unwrap();
+    set_time(&mut r.env.svm, T0 + 300);
+    report(&mut r, 1, P, C).unwrap();
+    assert_eq!(index(&r).update_count, 0);
+    // reporter 0 reports again: its new report is fresh, the oldest fresh one
+    // (reporter 1, T0 + 300) is 599 s old: still waiting
+    set_time(&mut r.env.svm, T0 + 899);
+    report(&mut r, 0, P, C).unwrap();
+    assert_eq!(index(&r).update_count, 0);
+    // at 600 s the two fresh reports form the update without reporter 2
+    set_time(&mut r.env.svm, T0 + 900);
+    report(&mut r, 0, P, C).unwrap();
+    let s = index(&r);
+    assert_eq!(s.update_count, 1);
+    assert_eq!(s.last_price, 310_000);
+}
+
+#[test]
+fn a_price_without_a_raw_hash_is_refused() {
+    let mut r = ready(1, 1);
+    let reporter = r.reporters[0].insecure_clone();
+    let mut hashes = [[7u8; 32]; MAX_SOURCES];
+    hashes[1] = [0u8; 32]; // RunPod has a price but no hash
+    let ix = report_ix_with_hashes(&reporter.pubkey(), CLASS, r.obs, P, C, hashes);
+    assert_err(send(&mut r.env.svm, ix, &reporter, &[]), "MissingRawHash");
+    // a source that did not answer: price 0 and no hash is fine
+    let mut p = P;
+    p[1] = 0;
+    let ix = report_ix_with_hashes(&reporter.pubkey(), CLASS, r.obs, p, C, hashes);
+    send(&mut r.env.svm, ix, &reporter, &[]).unwrap();
+    assert_eq!(index(&r).update_count, 1);
 }
 
 #[test]
