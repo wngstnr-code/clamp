@@ -104,10 +104,10 @@ The planned oracle network (Switchboard) shut down on 2026-09-25, so Clamp bring
 
 1. If the last update is less than `MIN_UPDATE_INTERVAL` ago, stop. The report stays stored.
 2. Fresh reports are the stored reports that are at most `REPORT_WINDOW` old and were not used in an update yet. If there are fewer than `min_reporters`, stop.
-3. Per source: take the fresh prices that are above 0 and inside the class sanity bounds `[min_price, max_price]`. If fewer than `min_reporters` reporters gave one, the source is left out. Otherwise the source price is the median of those prices and the source capacity is the median of those capacities (for an even count, the average of the two middle values).
+3. Per source: take the fresh prices that are above 0 and inside the class sanity bounds `[min_price, max_price]`. If fewer than `min_reporters` reporters gave one, the source is left out. Otherwise the source price is the median of those prices and the source capacity is the median of those capacities (for an even count, the average of the two middle values, rounded down).
 4. Drop sources with weight 0 (section 6.1). Require at least `min_sources` sources and a total weight of at least `min_total_weight`. Otherwise stop.
-5. `candidate` = weighted median: sort the sources by price, walk up until the running weight reaches half of the total weight. If the running weight hits exactly half, take the average of that price and the next one.
-6. Step limit: `price = clamp(candidate, last_price * (1 - max_step), last_price * (1 + max_step))`. A real move passes over a few updates. A single bad print has a small effect.
+5. `candidate` = weighted median: sort the sources by price, walk up until the running weight reaches half of the total weight. If the running weight hits exactly half, take the average of that price and the next one (rounded down).
+6. Step limit: `price = clamp(candidate, last_price * (1 - max_step), last_price * (1 + max_step))`. The lower bound rounds up and the upper bound rounds down, so one update never moves more than `max_step`. The first update of a class has no previous price and is not limited. A real move passes over a few updates. A single bad print has a small effect.
 7. Record the price (section 6.3) and mark the fresh reports as used.
 
 "Stop" never fails the transaction: the report is kept and nothing else changes.
