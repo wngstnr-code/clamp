@@ -174,7 +174,7 @@ Full details go in `docs/build-and-deploy.md`. Add each command to this table wh
 | Set reporters and quorum (admin) | `pnpm --filter @clamp/backend set-reporters <min> <keypair files>...` |
 | Claim 1,000 tUSDC for a local keypair (devnet) | `pnpm --filter @clamp/backend faucet-claim <keypair file>` |
 | Series on devnet: show, create, mint, merge | `pnpm --filter @clamp/backend series show 1 1 0` (see `backend/src/series-cli.ts`) |
-| Prune raw files older than 30 days now (the tick does it daily) | `pnpm --filter @clamp/backend run prune` |
+| Prune raw files older than 20 days now (the tick does it daily) | `pnpm --filter @clamp/backend run prune` |
 | Read-only SQL on the project | `pnpm exec supabase db query --remote --read-only "<sql>"` |
 
 ## 12. Definition of done (for any task)
