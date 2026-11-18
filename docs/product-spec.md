@@ -94,7 +94,7 @@ Each source gives one **price** (USD per hour for one GPU) and, where it exists,
 
 Capacity tiers: 0 units means weight 0 (the source is left out, because a price nobody can rent at is not a price). 1 to 4 units means weight 1. 5 or more units means weight 2.
 
-H100 has no Nosana market today, so it uses sources 1 to 3. The exact requests and the rule that turns a raw response into a price and a capacity are public code in `packages/sdk/src/sources/` and are mirrored in `architecture.md`.
+The H100 class tracks the H100 SXM (80 GB) only: Vast.ai `H100 SXM` offers, RunPod `NVIDIA H100 80GB HBM3`, Akash `h100` with interface `SXM5`, plus the Nosana markets whose name contains `H100`, which appeared in November 2026 and do not name the variant (D-053). The exact requests and the rule that turns a raw response into a price and a capacity are public code in `packages/sdk/src/sources/` and are mirrored in `architecture.md`.
 
 ### 6.2 How one update is computed (on-chain)
 

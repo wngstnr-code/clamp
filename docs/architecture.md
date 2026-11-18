@@ -229,9 +229,9 @@ One pure function per source and class: raw API response in, `{ price, capacity 
 | RTX 4090 | RunPod | `POST https://api.runpod.io/graphql` with the `gpuTypes` query | `communityPrice` of the type `NVIDIA GeForce RTX 4090` | none |
 | RTX 4090 | Akash | `GET https://console-api.akash.network/v1/gpu-prices` | `price.weightedAverage` of the model `rtx4090` | `availability.available` |
 | RTX 4090 | Nosana | `GET https://api.nosana.com/api/markets/` | Median of `usd_reward_per_hour` of the markets whose name contains "4090" (six markets on 2026-11-17, $0.29 to $0.50) | none |
-| H100 | Vast.ai, RunPod, Akash | same endpoints with the H100 models | set in M1 (Vast.ai lists H100 SXM, NVL and PCIE as separate names, RunPod lists three H100 types, Akash has the model `h100`) | |
+| H100 | Vast.ai, RunPod, Akash, Nosana | same endpoints | Vast.ai: median `dph_total` of `H100 SXM` offers. RunPod: `communityPrice` of `NVIDIA H100 80GB HBM3`. Akash: `weightedAverage` of `h100` with interface `SXM5`. Nosana: median of the markets whose name contains `H100` (D-053) | Vast.ai: offers. Akash: available. Others: none |
 
-All four requests were run by hand on 2026-11-17 and returned usable data.
+All four requests were run by hand on 2026-11-17 and again on 2026-11-18. The 2026-11-18 answers are saved in `packages/sdk/test/fixtures/2026-11-18/` and the rules are tested on them: RTX 4090 gives $0.3636 (Vast.ai $0.4847 with 57 offers, RunPod $0.34, Akash left out with 0 available, Nosana $0.3636), H100 gives $2.69. Prices are converted to micro-USD per item (rounded to the nearest unit) before any median. The code is in `packages/sdk/src/sources/` (`rules.ts`, `classes.ts`).
 
 ### 3.7 Events
 
@@ -254,7 +254,7 @@ TypeScript on Node. One small HTTP app (Hono) deployed as its own Vercel project
 
 One tick, in order (each step is independent and logged in `crank_runs`):
 
-1. **Report**: fetch the four price APIs, apply the source rules, store the raw responses in the storage bucket `raw` and one row per source in `source_ticks`, then send `submit_report` for each class with the hashes of the raw responses.
+1. **Report**: fetch the four price APIs, apply the source rules, store the raw responses in the storage bucket `raw` under their SHA-256 (D-053) and one row per source in `source_ticks`, then send `submit_report` for each class with the hashes of the raw responses.
 2. **Record**: read the events of the last transactions of each class and store accepted index updates in `index_updates`.
 3. **Crank**: `settle_series` for expired series, `sweep_series`, `create_series` plus `seed_series` when a kind has no live series, `roll_lock` for locks with auto-roll.
 4. **Mirror**: upsert the `series` table from chain.
@@ -274,7 +274,7 @@ Row level security: everyone can read, only the service role (the worker) can wr
 | `series` | `address`, `class_id`, `kind`, `start_ts`, `close_ts`, `expiry_ts`, `center`, `lower`, `upper`, `settled`, `avg`, `up_value`, `coverage_ppm`, `settle_signature` | Mirror of the chain for lists |
 | `crank_runs` | `id`, `ts`, `action`, `ok`, `detail`, `signature` | Worker log |
 
-Storage bucket `raw` (public read, JSON only, 5 MB per file): `raw/<class>/<source>/<unix ts>-<reporter>.json`, the exact bytes that were hashed.
+Storage bucket `raw` (public read, JSON only, 5 MB per file): `raw/<sha256 hex>.json`, the exact bytes that were hashed (content-addressed, D-053). The name follows from the hash in the `ReportSubmitted` event, so a verifier needs nothing else. One file can serve several classes (RunPod, Akash and Nosana answer once for all classes). Reporters 2 and 3 publish their raw files under the same naming in their own public archive; `verifyReport` tries a list of archive base URLs.
 
 Reporters fetch at slightly different moments, so their numbers can differ a little. That is why the program takes the median across reporters. The proof page checks the settlement math against on-chain data, and for any single report it checks file hash, recomputed price and on-chain value against each other.
 
@@ -284,7 +284,8 @@ Reporters fetch at slightly different moments, so their numbers can differ a lit
 - PDA helpers for every row of section 3.2.
 - The same math as the program in TypeScript (`median`, `twap`, `pool`, `vault`), tested against the same vectors as the Rust code, for quotes in the UI and for the proof page.
 - The source rules of section 3.6.
-- Readers: `getIndex(class)`, `getTwap(class, from, to)`, `getSeries`, `getLocks(owner)`, `getVault`, `verifyReport(signature)` and `verifySettlement(series)`.
+- Shared math vectors in `packages/sdk/test/vectors/index-math.json`, read by both the Rust tests (`programs/clamp/tests/test_vectors.rs`) and the SDK tests.
+- Readers: `getIndex(class)`, `getObservations(class)`, `getTwap(class, from, to)`, `getSeries`, `getLocks(owner)`, `getVault`, `verifyReport(signature)` and `verifySettlement(series)`.
 - This is also the public SDK of product part 6. A Rust reader for other programs is a stretch goal.
 
 ## 7. Web app (`web/`)
