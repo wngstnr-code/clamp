@@ -90,7 +90,7 @@ export const RTX4090: ClassSpec = {
   minPrice: 50_000n,
   maxPrice: 5_000_000n,
   maxStepPpm: 100_000,
-  halfWidthPpm: [100_000, 150_000, 200_000],
+  halfWidthPpm: [200_000, 200_000, 250_000],
 };
 
 /** H100 SXM only, plus the Nosana H100 markets (D-053). */
@@ -136,7 +136,7 @@ export const H100: ClassSpec = {
   minPrice: 500_000n,
   maxPrice: 20_000_000n,
   maxStepPpm: 100_000,
-  halfWidthPpm: [100_000, 150_000, 200_000],
+  halfWidthPpm: [200_000, 200_000, 250_000],
 };
 
 export const CLASSES: Record<number, ClassSpec> = {
