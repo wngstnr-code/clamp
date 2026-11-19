@@ -161,8 +161,8 @@ Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, 
 | H100 supply is thin (6 Vast.ai offers on 2026-11-17) | medium | RTX 4090 is the primary class |
 | RunPod and Nosana are posted prices that move rarely | low | Fixed weights, median |
 | Vault deposits and withdrawals can be timed around index updates (no fee) | medium | Deep review M2: the gain is at most the NAV change of one update (net position times the move of v). |
-| Traders who see an API price before the on-chain update can trade ahead of it | medium | Simulated in the M2 deep review: the loss is at most allocation times the move of v, near zero for moves under 2%, about 4% of NAV for a full 10% step early in a daily series. Tune with the band recalibration. |
-| The band half widths are starting values without data behind them | medium | Recalibrate in M2 |
+| Traders who see an API price before the on-chain update can trade ahead of it | medium | Simulated in the M2 deep review. Bands widened (D-059): early in a daily series a 6.5% index jump now pays an attacker about 2% of the series allocation (was 9.4%), a full 10% step about 5% (was 39%). Still a cost of the design: stated in the README. |
+| The band half widths are set against front-running, not yet from a statistical history (D-059: 20%, 20%, 25%) | low | 30 hours of a flat index on 2026-11-19. Check the spec's calibration rule again at 7 days (2026-11-26). |
 | The legal status is not resolved | medium | Devnet and test tokens only |
 | The provider key passes through our proxy | low | Read-only scope, never stored, invoice file as the other way |
 | The name is shared with another crypto product | low | D-037 |
@@ -196,6 +196,12 @@ Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-19, band recalibration (Wangsit)
+
+- The RTX 4090 index moves in jumps: RunPod $0.34 and Nosana $0.3636 never changed, Akash changed once ($0.34 to $0.36), Vast.ai moves ($0.47 to $0.60) but sits above the median. 122 updates, all $0.3636.
+- New test `band_width_against_front_running` (best attack per half width for 1%, 6.5% and 10% jumps). Decision D-059: half widths 20%, 20%, 25%; spec 7.1 and the SDK class specs updated.
+- Applied on devnet with the new admin script `set-half-widths` (class 1 and 2, reporters and quorum kept). The live daily and weekly series keep their bands; the daily series created on 2026-11-20 16:30 UTC is the first with plus or minus 20%.
 
 ### 2026-11-18, SDK market readers (Wangsit)
 
