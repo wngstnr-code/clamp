@@ -94,8 +94,8 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 | Milestone | Status |
 |---|---|
 | M0 Setup | Wangsit part done 2026-11-18 (toolchain, repo, programs, keypairs, verifiable build, Supabase). AG part open (scaffold `web/`, wallet, client packages). |
-| M1 Index live | not started |
-| M2 Claim market | not started |
+| M1 Index live | Wangsit part done 2026-11-18 (index on devnet, three reporters, quorum 2, every 15 minutes). AG part open (index pages). |
+| M2 Claim market | Wangsit part done 2026-11-19: the first daily series went from creation to settlement, sweep and redeem with real devnet transactions, all by the crank except the user trades. AG part open (faucet and market pages). |
 | M3 Bill Lock | not started |
 | M4 Vault complete | not started |
 | M5 Revenue Lock | not started |
@@ -138,7 +138,7 @@ Checked: `anchor build`, 52 Rust tests, 60 SDK tests, 13 backend tests, clippy w
 
 ### Deep review of M2, part 1 (2026-11-18)
 
-Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, rustfmt, TypeScript typecheck, dash check. Spec 5, 7, 8, 9, 11 and 14 compared rule by rule with `create_series`, `mint_pairs`, `merge_pairs`, `seed_series`, `buy`, `sell`, `settle_series`, `redeem`, `sweep_series`, `deposit`, `withdraw` and the valuation code: all match (rounding directions, fee split, re-centering once per update, pause outside `P_MIN`, close one twenty-fourth of the period before expiry, NAV refused past expiry until settled). Settlement is the same for any caller at any time: the sums at expiry are extrapolated before the next update and interpolated after it with the same rule (previous price, gap capped at `MAX_GAP`). Live on devnet: the crank created and seeded the first daily and weekly series, and a buy and a sell worked. Part 2 (front-running simulation, first settlement and redeem) follows.
+Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, rustfmt, TypeScript typecheck, dash check. Spec 5, 7, 8, 9, 11 and 14 compared rule by rule with `create_series`, `mint_pairs`, `merge_pairs`, `seed_series`, `buy`, `sell`, `settle_series`, `redeem`, `sweep_series`, `deposit`, `withdraw` and the valuation code: all match (rounding directions, fee split, re-centering once per update, pause outside `P_MIN`, close one twenty-fourth of the period before expiry, NAV refused past expiry until settled). Settlement is the same for any caller at any time: the sums at expiry are extrapolated before the next update and interpolated after it with the same rule (previous price, gap capped at `MAX_GAP`). Live on devnet: the crank created and seeded the first daily and weekly series, and a buy and a sell worked. Part 2 (2026-11-19): the front-running simulation is below. The first daily series expired at 16:30:18 UTC; the crank waited for it and in the same tick settled it (16:30:26, average $0.3636, UP value 0.5), swept it into the vault, created and seeded the next daily series (no gap). test-user-1 redeemed 14.333063 UP for 7.166531 tUSDC (rounded down). After that the old series holds 0 UP, 0 DOWN and 1 micro-USDC of dust (invariant 2 holds); the vault NAV is 2,000.229 tUSDC with a share price of 1.000114 (trade fees). M2 done-when met.
 
 | Finding | Severity | Fix |
 |---|---|---|
