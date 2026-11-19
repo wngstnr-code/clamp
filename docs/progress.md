@@ -16,7 +16,7 @@ Update this file at the end of every session and after every milestone. Newest e
 
 ### Shared
 
-0. **Deadline: Sunday 2026-11-29 12:00 WIB** (submission window 12:00 to 14:00 WIB), feature freeze Saturday 22:00 WIB (D-058, schedule in `development-plan.md`). AG and Wangsit are both accepted (2026-11-19); the team is not created in the dashboard yet: one creates it, the other joins with the code.
+0. **Deadline: Sunday 2026-11-29 12:00 WIB** (submission window 12:00 to 14:00 WIB), feature freeze Saturday 22:00 WIB (D-058, schedule in `development-plan.md`). AG and Wangsit are both accepted (2026-11-19); team "Clamp" created by Wangsit on 2026-11-19 (closed to new members); AG still has to join with the join code (kept out of the repo).
 1. The user decides when the repo becomes public (D-046).
 2. AG clones the repo once it is on GitHub (`CLAUDE.md` is in git, D-049).
 
