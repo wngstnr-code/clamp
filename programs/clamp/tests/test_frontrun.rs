@@ -22,15 +22,20 @@ const PROTOCOL_BPS: u16 = 2_000;
 
 /// Fair value after `elapsed` seconds at `CENTER`, then `price` for the rest.
 fn fair_value(elapsed: u64, price: u64) -> u64 {
+    fair_value_in(LOWER, UPPER, DURATION, elapsed, price)
+}
+
+/// The same for any band and period.
+fn fair_value_in(lower: u64, upper: u64, duration: u64, elapsed: u64, price: u64) -> u64 {
     let avg = projected_avg(
         u128::from(CENTER) * u128::from(elapsed),
         elapsed,
         price,
-        DURATION - elapsed,
+        duration - elapsed,
     )
     .unwrap()
     .unwrap();
-    band_value_ppm(avg, LOWER, UPPER).unwrap()
+    band_value_ppm(avg, lower, upper).unwrap()
 }
 
 struct Outcome {
@@ -153,6 +158,54 @@ fn front_running_the_vault() {
                 usd(gain as i128)
             );
             assert!(gain <= nav_change);
+        }
+    }
+}
+
+/// Best attack per half width, for the index jumps seen in the RTX 4090
+/// sources (a posted price that changes moves the median by about 1% to 6.5%,
+/// or up to the 10% step limit), early in the period where it hurts most.
+#[test]
+fn band_width_against_front_running() {
+    println!("\nkind    half width  jump   v0 -> v1        attacker  share of alloc");
+    let cases: [(&str, u64, u64, &[u64]); 2] = [
+        (
+            "daily",
+            86_400,
+            3_600,
+            &[100_000, 150_000, 200_000, 250_000],
+        ),
+        ("weekly", 604_800, 86_400, &[150_000, 200_000, 250_000]),
+    ];
+    for (kind, duration, elapsed, widths) in cases {
+        let mut last = [i128::MAX; 3];
+        for &hw in widths {
+            let lower = CENTER * (PPM - hw) / PPM;
+            let upper = CENTER * (PPM + hw) / PPM;
+            for (j, dp_bps) in [100u64, 650, 1_000].into_iter().enumerate() {
+                let v0 = fair_value_in(lower, upper, duration, elapsed, CENTER);
+                let v1 = fair_value_in(
+                    lower,
+                    upper,
+                    duration,
+                    elapsed,
+                    CENTER * (10_000 + dp_bps) / 10_000,
+                );
+                let o = best(v0, v1);
+                println!(
+                    "{:<6}  {:>9}%  {:>4}%  {:.3} -> {:.3}  {:>8}  {:>6.2}%",
+                    kind,
+                    hw / 10_000,
+                    dp_bps as f64 / 100.0,
+                    v0 as f64 / 1e6,
+                    v1 as f64 / 1e6,
+                    usd(o.profit),
+                    o.profit as f64 * 100.0 / ALLOC as f64,
+                );
+                // A wider band never makes the same jump more profitable.
+                assert!(o.profit <= last[j]);
+                last[j] = o.profit;
+            }
         }
     }
 }
