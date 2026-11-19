@@ -7,6 +7,7 @@
 //   pnpm --filter @clamp/backend series deposit <usdc> <keypair.json>
 //   pnpm --filter @clamp/backend series seed   <class> <kind> <seq>
 //   pnpm --filter @clamp/backend series buy|sell <class> <kind> <seq> <side 0|1> <usdc or claims> <keypair.json>
+//   pnpm --filter @clamp/backend series redeem <class> <kind> <seq> <side 0|1> <claims> <keypair.json>
 // kind: 0 daily, 1 weekly, 2 monthly. Amounts in whole tUSDC.
 
 import { readFileSync } from "node:fs";
@@ -173,6 +174,33 @@ async function main() {
     return;
   }
 
+  if (cmd === "redeem") {
+    const side = Number(d);
+    const user = load(process.argv[8] ?? "test-user-1.json");
+    const program = clampProgram(connection, new KeypairWallet(user));
+    const series = seriesPda(classId, kind, Number(c));
+    const acc = seriesAccounts(series);
+    const claimMint = side === 0 ? acc.upMint : acc.downMint;
+    const userCollateral = getAssociatedTokenAddressSync(TUSDC_MINT, user.publicKey);
+    const before = await connection.getTokenAccountBalance(userCollateral);
+    const sig = await program.methods
+      .redeem(side, new BN(Math.round(Number(e) * 1e6)))
+      .accountsPartial({
+        user: user.publicKey,
+        series,
+        claimMint,
+        userClaims: getAssociatedTokenAddressSync(claimMint, user.publicKey),
+        collateral: acc.collateral,
+        collateralMint: TUSDC_MINT,
+        userCollateral,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+    const after = await connection.getTokenAccountBalance(userCollateral);
+    const paid = (Number(after.value.amount) - Number(before.value.amount)) / 1e6;
+    console.log(`redeem ${e} ${side === 0 ? "UP" : "DOWN"} (${sig}): paid ${paid} tUSDC`);
+    return;
+  }
   if (cmd === "buy" || cmd === "sell") {
     const [sideArg, amountArg, file] = [d, e, process.argv[8]];
     const side = Number(sideArg);
@@ -205,7 +233,7 @@ async function main() {
     console.log(`${cmd} (${sig}): user holds ${bal.value.uiAmountString} ${side === 0 ? "UP" : "DOWN"}`);
     return;
   }
-  throw new Error("usage: series show|create|mint|merge|vault-init|deposit|seed|buy|sell ...");
+  throw new Error("usage: series show|create|mint|merge|vault-init|deposit|seed|buy|sell|redeem ...");
 }
 
 main().catch((err) => {
