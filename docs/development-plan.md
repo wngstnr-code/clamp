@@ -7,13 +7,31 @@ Every milestone has tasks per person and a "done when". Track status in `progres
 | Hard date | What | Why |
 |---|---|---|
 | **2026-11-20** | The index updates on devnet every 15 minutes | Gives more than a week of real index history by submission |
-| **2026-11-21** | The first weekly series is created on devnet | It settles on 2026-11-28, in time for the demo video |
+| **2026-11-21** | The first weekly series is created on devnet | Done early: created by the crank on 2026-11-18 16:30 UTC, it settles on 2026-11-25, in time for the demo video. The next weekly series settles on 2026-12-02, after submission. |
 
 If the weekly series slips, the settled series in the demo is a short (daily) series, and the README says so.
 
 **What is built when (D-048).** M0, M1 and M2 are built before the hackathon. M3 to M7 are built during the hackathon window, 2026-11-27 to 2026-11-29. The README lists M0, M1 and M2 as "built before the hackathon".
 
 Owners: **W** = Wangsit (programs, backend), **AG** = AG (web app), **U** = things only the humans can do.
+
+## Hackathon schedule (WIB)
+
+The submission window is Sunday 12:00 to 14:00 WIB, so the last day is a morning only. Times are targets; the order matters more than the hour.
+
+| When (WIB) | Wangsit | AG | Gate |
+|---|---|---|---|
+| Fri 27 Nov, day | M3 program: locks and tests, deploy (verifiable build). Bill proxy and parser, SDK `getLocks` and sizing | Bill Lock page and positions page on the deployed program | |
+| Fri 27 Nov, 22:00 | Kick off | Kick off | |
+| Sat 28 Nov, morning | M3 done-when with a real bill. M4 vault checks. M5 earnings reader | Vault page, Revenue Lock page | M3 done by 12:00 |
+| Sat 28 Nov, afternoon | M6: `verifySettlement`, then `roll_lock` (cut line 3 if late) | Proof page, then auto-roll switch | |
+| Sat 28 Nov, 20:00 | Feedback session: show the whole demo flow | Same | Every demo step works on devnet |
+| Sat 28 Nov, 22:00 | **Feature freeze.** Final verifiable deploy, README, license, repo public, verify from a clean clone | Phone width pass, screenshots, live link | Nothing new after this, only fixes |
+| Sun 29 Nov, 06:00 to 10:00 | Record the demo video (under 3 minutes) | Same | |
+| Sun 29 Nov, 10:00 to 11:30 | Final check (dashes, tests, hosted demo, deep review notes) | Same | |
+| Sun 29 Nov, 12:00 | **Submit** when the window opens, at the latest 13:00 | Team member in the dashboard | Submitted |
+
+Before the hackathon (U): create the team in the dashboard and let the other person join with the code, so the submission is not blocked on Sunday.
 
 ## M0: Setup and spikes (2026-11-17 to 2026-11-18)
 
@@ -61,7 +79,7 @@ Done when: the index page shows real on-chain updates for RTX 4090 arriving on t
 
 Done when: on devnet a short series has gone from creation to settlement and redeem with real transactions, and the pair invariant holds in tests.
 
-## M3: Bill Lock (2026-11-27 to 2026-11-28)
+## M3: Bill Lock (Friday 2026-11-27)
 
 - [ ] W: `open_lock`, `close_lock`, `withdraw_lock_claims`, `set_auto_roll`, tests
 - [ ] W: bill proxy routes for Vast.ai and RunPod, bill parser (hours, cost and rate per class)
@@ -71,21 +89,21 @@ Done when: on devnet a short series has gone from creation to settlement and red
 
 Done when: a real Vast.ai bill is read with a read-only key, and a lock sized from it is opened and closed on devnet.
 
-## M4: Vault complete (2026-11-28)
+## M4: Vault complete (Saturday 2026-11-28, morning)
 
 - [ ] W: `withdraw`, allocation cap, active series list checks, vault tests (share games, rounding)
 - [ ] AG: vault page: share price, NAV parts, deposit, withdraw, available now
 
 Done when: a second wallet deposits, a series runs and is swept, and both depositors withdraw their correct share.
 
-## M5: Revenue Lock (2026-11-28)
+## M5: Revenue Lock (Saturday 2026-11-28, midday)
 
 - [ ] W: earnings reader for Vast.ai hosts
 - [ ] AG: Revenue Lock page (mirror of Bill Lock, buys DOWN)
 
 Done when: an owner flow opens a DOWN lock on devnet, sized from real earnings data or, if no pilot owner is available yet, from hours typed in by the user (shown as typed in).
 
-## M6: Proof, SDK, auto-roll, Nosana (2026-11-28 to 2026-11-29)
+## M6: Proof, SDK, auto-roll, Nosana (Saturday 2026-11-28, afternoon)
 
 - [ ] W: `verifySettlement` in the SDK, `roll_lock` with tests, roll step in the tick
 - [ ] W: Nosana host earnings from the public job history (the API was tested on 2026-11-17, see `research.md` section 3)
@@ -94,7 +112,7 @@ Done when: an owner flow opens a DOWN lock on devnet, sized from real earnings d
 
 Done when: the proof page recomputes a settled series and matches the chain, and one lock has rolled into a new series on its own.
 
-## M7: Submission (2026-11-27 to 2026-11-29)
+## M7: Submission (Saturday 2026-11-28 night to Sunday 2026-11-29 12:00 WIB)
 
 - [ ] Both: full run of the demo flow on devnet and at phone width, fix what breaks
 - [ ] W: README with exact "do X, see Y" steps, a "built before" and "built during" section, honest limits, tools used
