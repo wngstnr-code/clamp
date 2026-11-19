@@ -1,6 +1,6 @@
 # Dev3pack Global Hackathon: what matters for Clamp
 
-Official sources: https://hack.dev3pack.xyz/ and https://hack.dev3pack.xyz/faq (read the live version before submitting, rules can change). Facts below were collected on 2026-11-16 and 2026-11-17.
+Official sources: https://hack.dev3pack.xyz/ and https://hack.dev3pack.xyz/faq (read the live version before submitting, rules can change). Facts below were collected on 2026-11-16, 2026-11-17 and (dashboard) 2026-11-19.
 
 ## 1. Dates
 
@@ -8,20 +8,27 @@ Official sources: https://hack.dev3pack.xyz/ and https://hack.dev3pack.xyz/faq (
 |---|---|---|
 | Registration | Before the event, as early as possible | Apply at https://app.dev3pack.xyz/hackathon/register. Applications are reviewed: once accepted, the applicant's email is whitelisted and can sign up at hack.dev3pack.xyz/auth/sign-up. **Both AG and Wangsit must apply and be accepted**, then one creates a team in the dashboard (hack.dev3pack.xyz/dashboard/teams) and the other joins with the 6-character code. Submission happens in the same dashboard, so no acceptance means no submission. |
 | Hackathon window | 2026-11-27 to 2026-11-29 | Hybrid, with build stations (Jakarta and Semarang among them) |
-| **Submission deadline** | **Sunday 2026-11-29** | **Exact hour not official.** The FAQ (checked 2026-11-17) says the exact UTC hour "will be confirmed in the dashboard". One third-party list says 23:59 "anywhere on earth" (2026-11-30 18:59 WIB), not confirmed. Ask the organizers, and until then plan to submit by the evening of 2026-11-29 WIB. |
+| **Submission** | **Sunday 2026-11-29, 12:00 to 14:00 WIB (05:00 to 07:00 UTC)** | From the dashboard schedule ("Project Submission", read on 2026-11-19). Treat 12:00 WIB as the real deadline: everything (repo public, README, video, live link, verified deploy) must be ready by the morning of 2026-11-29. If the organizers state a later hour, record it here. |
+| Kick off | Friday 2026-11-27, 22:00 to 23:00 WIB | Dashboard schedule |
+| Project feedback session | Saturday 2026-11-28, 20:00 to 22:00 WIB | Dashboard schedule. A chance to show a working draft. |
+| Closing and winners | Sunday 2026-11-29, 22:00 to 23:00 WIB | Dashboard schedule |
+| Global Demo Day | Tuesday 2026-12-01, 20:00 to 22:00 WIB | Dashboard schedule |
+| Bootcamp (optional) | 2026-11-24 to 2026-11-27, 20:00 WIB | Solana Rust Bootcamp, separate registration |
 | Accelerator application | by 2026-12-03 | Bridge Accelerator, 8 weeks, 0% equity |
 
 ## 2. Prizes
 
 | Prize | Amount | Note |
 |---|---|---|
-| Best app overall | "$10,000+" on the site | An X post of 2026-11-16 says "$15,000+" in total with $5,000 split among the global top 3. The two numbers do not match, so treat them as unconfirmed. |
-| Local prizes | $500+ in 19 countries | Indonesia is not on the list. Our target is the global top 3. |
+| Best app overall | $5,000 (1st 2,500 USDC, 2nd 1,500, 3rd 1,000) | Dashboard "Tracks & Prizes" on 2026-11-19. One load of the same page showed $10,000 with 3,000, 2,500 and 1,500 plus Ledgers for the top 10, Claude Pro for the top 30 and a $500 bonus for x402; a reload showed $5,000. Treat the amounts as unconfirmed. |
+| Local prizes | $500+ in 19 countries | Indonesia was not on the list on 2026-11-17; the dashboard now lists Superteam Indonesia local prizes as a side track (submitted externally). Our target is the global top 3. |
 | Solana Mobile track | Seeker phones | We do not have a Seeker. Deferred (D-014). |
 | Gaming track | With Byte Arena | Not for us |
 | Top 30 | Claude Pro | |
 
 Partners named so far: ElevenLabs, Firecrawl, Supabase, Noah AI, Pollar (Latin America only). Partner tracks were not announced yet on 2026-11-17. When they are, check once whether one fits without changing the product.
+
+Qualification (dashboard, 2026-11-19): project name and short description; a unique Solana program in Rust deployed at least to devnet; the program addresses in the README; a public GitHub repo with README and setup steps; a demo video under 3 minutes and a live demo link. Bonus: consistent and considerable use of Solana libraries and SDKs. Side tracks listed there (submitted externally): Colosseum Accelerator, Superteam Indonesia local prizes. Other track names seen once: LI.FI, Virtuals, Solana Mobile, ElevenLabs (not checked in detail).
 
 ## 3. Judging
 

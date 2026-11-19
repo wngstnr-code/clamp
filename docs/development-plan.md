@@ -1,6 +1,6 @@
 # Clamp development plan
 
-Submissions close on **Sunday 2026-11-29** (exact hour to be confirmed, see `hackathon.md`). The hackathon window is 2026-11-27 to 2026-11-29. Work before 27 November is allowed and must be listed honestly in the README as "built before the hackathon".
+Submissions close on **Sunday 2026-11-29**: the dashboard schedules the submission at 12:00 to 14:00 WIB, so plan to be done by 12:00 WIB (see `hackathon.md`). The hackathon window is 2026-11-27 to 2026-11-29. Work before 27 November is allowed and must be listed honestly in the README as "built before the hackathon".
 
 Every milestone has tasks per person and a "done when". Track status in `progress.md`, not here. Dates are targets. Two dates are hard, because the demo needs real history:
 
