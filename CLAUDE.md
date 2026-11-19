@@ -172,6 +172,7 @@ Full details go in `docs/build-and-deploy.md`. Add each command to this table wh
 | Backend health | `curl https://clamp-backend.vercel.app/health` |
 | Bundle the standalone reporter | `pnpm --filter @clamp/backend bundle:reporter` |
 | Set reporters and quorum (admin) | `pnpm --filter @clamp/backend set-reporters <min> <keypair files>...` |
+| Set the band half widths from the SDK class specs (admin) | `pnpm --filter @clamp/backend set-half-widths` |
 | Claim 1,000 tUSDC for a local keypair (devnet) | `pnpm --filter @clamp/backend faucet-claim <keypair file>` |
 | Series on devnet: show, create, mint, merge, buy, sell, redeem | `pnpm --filter @clamp/backend series show 1 1 0` (see `backend/src/series-cli.ts`) |
 | Prune raw files older than 20 days now (the tick does it daily) | `pnpm --filter @clamp/backend run prune` |
