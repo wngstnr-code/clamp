@@ -188,15 +188,15 @@ Known limits (also in `progress.md`): on devnet the reporters are run by the tea
 
 Creation needs a fresh index (last update within `MAX_GAP`). Nothing in a series can change after creation. No person picks the band.
 
-Half width per class and kind **(initial, recalibrate in M2 from index history)**:
+Half width per class and kind (recalibrated in M2 on 2026-11-19, D-059; first values were 10%, 15% and 20%):
 
 | Kind | Half width |
 |---|---|
-| Daily | 100,000 ppm (10%) |
-| Weekly | 150,000 ppm (15%) |
-| Monthly | 200,000 ppm (20%) |
+| Daily | 200,000 ppm (20%) |
+| Weekly | 200,000 ppm (20%) |
+| Monthly | 250,000 ppm (25%) |
 
-Calibration rule: about two times the typical change of the period average seen in our own index history, rounded to 5%.
+Calibration rule: about two times the typical change of the period average seen in our own index history, rounded to 5%, and never so narrow that an index jump seen early on a provider API makes front-running pay (simulation in `programs/clamp/tests/test_frontrun.rs`). The index moves in jumps (posted prices change rarely), so the second part decides for now. Check the first part again once the index has 7 days of history.
 
 The daily kind is a **short series** for testing and for showing a real settlement quickly. The web app labels it "Short series". It is not the hedging product.
 

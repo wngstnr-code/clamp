@@ -73,7 +73,7 @@ Done when: the index page shows real on-chain updates for RTX 4090 arriving on t
 - [x] W: vault core: `deposit`, NAV, `sweep_series` (also `withdraw`)
 - [ ] W: instruction tests for every invariant touched
 - [ ] W: backend tick step 3 (create, seed, settle, sweep) and step 4 (mirror)
-- [ ] W: recalibrate the half widths from the index history so far
+- [x] W: recalibrate the half widths from the index history so far (D-059, 2026-11-19)
 - [ ] W: create the first daily series, then the first **weekly** series (hard date 2026-11-21)
 - [ ] AG: faucet page, market pages (series list, mint, merge, buy, sell, redeem), SDK math for quotes
 
