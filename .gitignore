@@ -20,3 +20,7 @@ dist/
 .vercel
 scripts/reporter-netlify/reporter-lib.mjs
 scripts/reporter-netlify/.netlify/
+
+# Local tools
+.claude/
+next-env.d.ts
