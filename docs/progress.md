@@ -7,7 +7,7 @@ Update this file at the end of every session and after every milestone. Newest e
 | Item | Value |
 |---|---|
 | Phase | **M1 done (2026-11-18)**: the index runs on devnet every 15 minutes with three reporters on three platforms and a quorum of 2. **M2 in progress**: stage 1 (tUSDC faucet) done. Work goes stage by stage: after each stage, report and wait. |
-| Current milestone | M2 Claim market (Wangsit). AG has not started M0 (`web/`). |
+| Current milestone | M2 Claim market (Wangsit). AG: M0 scaffold done 2026-11-19, index page next. |
 | Deadline | Sunday 2026-11-29, hour not confirmed |
 | Hard dates | Index live on devnet by 2026-11-20: **met 2026-11-18**. First weekly series created by 2026-11-21: open. |
 | Days left | 11 (as of 2026-11-18) |
@@ -29,7 +29,8 @@ Update this file at the end of every session and after every milestone. Newest e
 
 ### AG (web app)
 
-1. Scaffold `web/` and connect a devnet wallet.
+1. ~~Scaffold `web/` and connect a devnet wallet~~ (done 2026-11-19, committed 2026-11-20): Next.js 16, Tailwind 4, wallet adapter with Wallet Standard, header with a devnet badge, home page with the wallet's live SOL and tUSDC balances. Build and typecheck pass. Packages in D-060 (proposed, waiting for AG). Not tested yet with a real wallet extension: AG checks connect in their own browser. AG has no root `.env` yet: ask Wangsit for the public values (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, RPC) before the index page.
+2. Next: the index page (M1 AG), see below. Pre-built M3+ work waits for the hackathon window before it is committed (Wangsit's rule, 2026-11-19); the README must still list it as built before.
 3. Start the index page from the real program interface (ready since 2026-11-18, M1 stage 2). What is final for the index pages:
    - **IDL and types:** `packages/sdk/src/idl/clamp.json` and `clamp.ts` (copies of the Anchor build, refreshed by Wangsit on every program change). Use them only through `packages/sdk` (CLAUDE.md section 3), never a hand-written copy.
    - **Accounts to read:** `ClassConfig` (PDA `["class", class_id]`: name, reporters, `min_reporters`, sources, bounds), `IndexState` (PDA `["index", class_id]`: `last_price`, `last_ts`, `update_count`, `reports[]` with each reporter's latest prices), `Observations` (address in `IndexState.observations`, ring of 2,048 entries, newest at `obs_index`, `obs_count` filled). Layouts in `architecture.md` section 3.1.
@@ -93,7 +94,7 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 
 | Milestone | Status |
 |---|---|
-| M0 Setup | Wangsit part done 2026-11-18 (toolchain, repo, programs, keypairs, verifiable build, Supabase). AG part open (scaffold `web/`, wallet, client packages). |
+| M0 Setup | Wangsit part done 2026-11-18 (toolchain, repo, programs, keypairs, verifiable build, Supabase). AG part done 2026-11-19 in code (scaffold `web/`, wallet, D-060 proposed), wallet connect not yet checked with a real extension. |
 | M1 Index live | Wangsit part done 2026-11-18 (index on devnet, three reporters, quorum 2, every 15 minutes). AG part open (index pages). |
 | M2 Claim market | Wangsit part done 2026-11-19: the first daily series went from creation to settlement, sweep and redeem with real devnet transactions, all by the crank except the user trades. AG part open (faucet and market pages). |
 | M3 Bill Lock | not started |
@@ -202,6 +203,10 @@ Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it
 - The RTX 4090 index moves in jumps: RunPod $0.34 and Nosana $0.3636 never changed, Akash changed once ($0.34 to $0.36), Vast.ai moves ($0.47 to $0.60) but sits above the median. 122 updates, all $0.3636.
 - New test `band_width_against_front_running` (best attack per half width for 1%, 6.5% and 10% jumps). Decision D-059: half widths 20%, 20%, 25%; spec 7.1 and the SDK class specs updated.
 - Applied on devnet with the new admin script `set-half-widths` (class 1 and 2, reporters and quorum kept). The live daily and weekly series keep their bands; the daily series created on 2026-11-20 16:30 UTC is the first with plus or minus 20%.
+
+### 2026-11-19, M0 web scaffold (AG)
+
+- `web/`: Next.js 16 App Router, Tailwind 4 tokens in `globals.css`, wallet providers (Wallet Standard, autoConnect), header with devnet badge, home page with live SOL and tUSDC balances (`TUSDC_MINT` from `@clamp/sdk`). Root `.env` loaded by `next.config.ts`; `fs` aliased to an empty module for Anchor's browser build. `pnpm --filter web build` and `typecheck` pass, dash check passes, page renders with no console errors, wallet modal opens. `.gitignore`: `.claude/`, `next-env.d.ts`.
 
 ### 2026-11-18, SDK market readers (Wangsit)
 
