@@ -234,14 +234,17 @@ The reporter needs only `REPORTER_KEYPAIR` (keypair file content) and optionally
 
 ## 5. Web app
 
-All not run yet.
+Run on 2026-11-19. `dev` and `build` build the SDK first, because `@clamp/sdk` resolves to its `dist/`.
 
 ```
 pnpm --filter web dev
 pnpm --filter web build
+pnpm --filter web typecheck
 ```
 
-Hosted on Vercel with the root directory `web/`. Only `NEXT_PUBLIC_` variables reach the browser.
+- `web/next.config.ts` loads the root `.env` (one env file for the repo). Without `NEXT_PUBLIC_SOLANA_RPC_URL` the app uses the public devnet endpoint.
+- `fs` is aliased to an empty module in the browser bundle: Anchor's browser build `require`s it in `NodeWallet`, which the app never uses.
+- Not deployed yet. Planned: Vercel with the root directory `web/`. Only `NEXT_PUBLIC_` variables reach the browser.
 
 ## 6. Text check
 
