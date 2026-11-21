@@ -6,10 +6,15 @@ export interface ManagedSeries {
   kind: number;
 }
 
-/** Series the crank keeps alive: RTX 4090 daily (short series) and weekly. */
+/**
+ * Series the crank keeps alive: RTX 4090 daily (short series) and weekly, and
+ * H100 daily (D-061: its index moves, the RTX 4090 index is held by a posted
+ * price for now).
+ */
 export const MANAGED: ManagedSeries[] = [
   { classId: 1, kind: 0 },
   { classId: 1, kind: 1 },
+  { classId: 2, kind: 0 },
 ];
 
 export interface SeriesState {
