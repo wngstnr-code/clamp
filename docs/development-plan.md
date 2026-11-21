@@ -35,18 +35,18 @@ Before the hackathon (U): create the team in the dashboard and let the other per
 
 ## M0: Setup and spikes (2026-11-17 to 2026-11-18)
 
-- [ ] W: install the Solana CLI and Anchor, record the versions in `build-and-deploy.md`
-- [ ] W: `git init`, pnpm workspace, Cargo workspace, `.gitignore`, `.env.example`, local exclude for `CLAUDE.md` and `.claude/`
-- [ ] W: devnet keypairs (deployer, crank, test users), funded from the faucet by the user
-- [ ] W: Supabase project, tables of `architecture.md` section 5.1, read-only policies
+- [x] W: install the Solana CLI and Anchor, record the versions in `build-and-deploy.md`
+- [x] W: `git init`, pnpm workspace, Cargo workspace, `.gitignore`, `.env.example`, local exclude for `CLAUDE.md` and `.claude/`
+- [x] W: devnet keypairs (deployer, crank, test users), funded from the faucet by the user
+- [x] W: Supabase project, tables of `architecture.md` section 5.1, read-only policies
 - [x] W: decide where reporters two and three run and who runs them (`architecture.md` section 3.5, D-054: team-run on GitHub Actions and Netlify).
-- [ ] AG: scaffold `web/` (Next.js, Tailwind, TypeScript), wallet connection on devnet, base layout and design direction
-- [ ] AG: pick the Solana client and wallet packages, record them in `decisions.md`
+- [x] AG: scaffold `web/` (Next.js, Tailwind, TypeScript), wallet connection on devnet, base layout and design direction (2026-11-19; connect with a real wallet extension not checked yet)
+- [x] AG: pick the Solana client and wallet packages, record them in `decisions.md` (D-060, proposed)
 - [ ] U: create Vast.ai and RunPod accounts, rent an RTX 4090 for a small real job, create a read-only API key (needed to build and test the bill reader with a real bill)
 - [ ] U: start the user interviews and look for one pilot renter and one pilot GPU owner (`research.md` section 6)
 - [x] U: confirm the proposed decisions in `decisions.md` (done 2026-11-17, D-040)
 - [ ] U: decide when the repo becomes public (D-046)
-- [ ] W: try a verifiable build once with an empty program and check it against devnet, so the steps are known before the first real deploy (D-041)
+- [x] W: try a verifiable build once with an empty program and check it against devnet, so the steps are known before the first real deploy (D-041)
 
 Done when: both people can build and run their area, and a verifiable build has been checked once.
 
@@ -69,12 +69,12 @@ Done when: the index page shows real on-chain updates for RTX 4090 arriving on t
 
 - [x] W: `test-usdc` faucet program and the tUSDC mint
 - [x] W: `math/pool.rs`, `math/vault.rs` with unit tests, including the worked example of spec 10.2
-- [ ] W: `create_series`, `seed_series`, `mint_pairs`, `merge_pairs`, `buy`, `sell`, `settle_series`, `redeem` (done 2026-11-18)
+- [x] W: `create_series`, `seed_series`, `mint_pairs`, `merge_pairs`, `buy`, `sell`, `settle_series`, `redeem` (done 2026-11-18)
 - [x] W: vault core: `deposit`, NAV, `sweep_series` (also `withdraw`)
-- [ ] W: instruction tests for every invariant touched
-- [ ] W: backend tick step 3 (create, seed, settle, sweep) and step 4 (mirror)
+- [x] W: instruction tests for every invariant touched
+- [x] W: backend tick step 3 (create, seed, settle, sweep) and step 4 (mirror)
 - [x] W: recalibrate the half widths from the index history so far (D-059, 2026-11-19)
-- [ ] W: create the first daily series, then the first **weekly** series (hard date 2026-11-21)
+- [x] W: create the first daily series, then the first **weekly** series (hard date 2026-11-21, met 2026-11-18)
 - [ ] AG: faucet page, market pages (series list, mint, merge, buy, sell, redeem), SDK math for quotes
 
 Done when: on devnet a short series has gone from creation to settlement and redeem with real transactions, and the pair invariant holds in tests.
