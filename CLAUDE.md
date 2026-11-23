@@ -175,6 +175,7 @@ Full details go in `docs/build-and-deploy.md`. Add each command to this table wh
 | Set the band half widths from the SDK class specs (admin) | `pnpm --filter @clamp/backend set-half-widths` |
 | Claim 1,000 tUSDC for a local keypair (devnet) | `pnpm --filter @clamp/backend faucet-claim <keypair file>` |
 | Series on devnet: show, create, mint, merge, buy, sell, redeem | `pnpm --filter @clamp/backend series show 1 1 0` (see `backend/src/series-cli.ts`) |
+| Vault on devnet: NAV, idle, share price, active series | `pnpm --filter @clamp/backend series vault` |
 | Prune raw files older than 20 days now (the tick does it daily) | `pnpm --filter @clamp/backend run prune` |
 | Read-only SQL on the project | `pnpm exec supabase db query --remote --read-only "<sql>"` |
 
