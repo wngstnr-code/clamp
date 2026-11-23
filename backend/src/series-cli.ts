@@ -3,6 +3,7 @@
 //   pnpm --filter @clamp/backend series create <class> <kind> [payer.json]
 //   pnpm --filter @clamp/backend series mint   <class> <kind> <seq> <usdc> <keypair.json>
 //   pnpm --filter @clamp/backend series merge  <class> <kind> <seq> <usdc> <keypair.json>
+//   pnpm --filter @clamp/backend series vault
 //   pnpm --filter @clamp/backend series vault-init
 //   pnpm --filter @clamp/backend series deposit <usdc> <keypair.json>
 //   pnpm --filter @clamp/backend series seed   <class> <kind> <seq>
@@ -22,6 +23,7 @@ import {
   clampProgram,
   configPda,
   getIndex,
+  getVault,
   idlePda,
   indexPda,
   sharesMintPda,
@@ -108,6 +110,24 @@ async function main() {
     console.log(`user holds ${up.value.uiAmountString} UP and DOWN, ${col.value.uiAmountString} tUSDC`);
     return;
   }
+  if (cmd === "vault") {
+    const v = await getVault(connection);
+    if (!v) throw new Error("vault not initialized");
+    const units = (x: bigint | null) => (x === null ? null : Number(x) / 1e6);
+    console.log({
+      vault: v.address.toBase58(),
+      nav: units(v.nav),
+      idle: units(v.idle),
+      totalShares: units(v.totalShares),
+      sharePrice: units(v.sharePrice),
+      activeSeries: v.activeSeries.map(
+        (s) => `class ${s.classId} kind ${s.kind} seq ${s.seq} ${s.settled ? "settled" : "live"} ${s.address.toBase58()}`,
+      ),
+    });
+    if (v.nav === null) console.log("nav is null: an active series has expired and waits for settlement");
+    return;
+  }
+
   if (cmd === "vault-init") {
     const admin = load("deployer.json");
     const program = clampProgram(connection, new KeypairWallet(admin));
