@@ -115,9 +115,12 @@ describe("expiryWait", () => {
     expect(expiryWait([], NOW)).toBe(0);
   });
 
-  it("waits for the soonest of several", () => {
-    const a = series({ key: "a", expiryTs: NOW + 90 });
-    const b = series({ key: "b", expiryTs: NOW + 30 });
-    expect(expiryWait([a, b], NOW)).toBe(32);
+  it("waits for the last of several within the limit", () => {
+    // Seen on 2026-11-25: weekly at +20 s and daily at +49 s. Waiting only for
+    // the weekly left the daily to the next tick, 15 minutes late.
+    const a = series({ key: "a", expiryTs: NOW + 49 });
+    const b = series({ key: "b", expiryTs: NOW + 20 });
+    const far = series({ key: "far", expiryTs: NOW + 500 });
+    expect(expiryWait([a, b, far], NOW)).toBe(51);
   });
 });
