@@ -220,6 +220,12 @@ Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it
 
 ## Session log
 
+### 2026-11-26, band check after 8 days (Wangsit)
+
+- Daily average against the series center, per day: RTX 4090 0% until 2026-11-24, then -0.7% (Akash $0.36 to $0.35, and the Vast.ai weight changing with its capacity moves the median between Nosana and the middle of two prices: $0.3618, $0.3568). H100 within plus or minus 0.5% until 2026-11-24, then -1.6% (Akash $2.73 to $2.55).
+- Largest single update jump: 2.7% (H100). H100 sources: Vast.ai $1.79 to $6.67 (thin supply, 5 failed fetches in 30 hours), Nosana $1.19 (H100 market without the variant, far below the others; the weighted median ignores it for now).
+- Decision D-062 (approved by the user): keep 20%, 20%, 25%. Simulation table rerun (daily, 6.5% jump: 9.4% of allocation at 10%, 2.0% at 20%).
+
 ### 2026-11-26, first weekly settlement (Wangsit)
 
 - Weekly seq 0 settled on 2026-11-25 16:30:28 UTC at average $0.3636, UP 0.5, swept, and weekly seq 1 was created and seeded in the same tick (band plus or minus 20%, expiry 2026-12-02). Vault NAV 2000.229, share price 1.000114.
