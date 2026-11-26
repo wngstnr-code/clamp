@@ -220,6 +220,12 @@ Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it
 
 ## Session log
 
+### 2026-11-26, first weekly settlement (Wangsit)
+
+- Weekly seq 0 settled on 2026-11-25 16:30:28 UTC at average $0.3636, UP 0.5, swept, and weekly seq 1 was created and seeded in the same tick (band plus or minus 20%, expiry 2026-12-02). Vault NAV 2000.229, share price 1.000114.
+- Bug: the crank waited only for the soonest expiry. The weekly expired at 16:30:20 and the RTX daily at 16:30:49, so the daily was settled one tick later (16:45) and every later RTX daily starts 15 minutes later. Fix: `expiryWait` waits for the last expiry within 120 s, with a test. Each new series also starts a few seconds after the previous expiry, so expiries creep by about 5 s a day; the 120 s window covers that for about three weeks.
+- The record step failed 3 times in 17 hours with RPC 429 (public devnet RPC). The next tick catches up: no update is missing in `index_updates`.
+
 ### 2026-11-21, H100 daily series (Wangsit)
 
 - Checks: daily seq 1 and seq 2 settled on their own (seq 2 is the first with plus or minus 20%), both at average $0.3636 and UP 0.5. Tick steps all ok for 24 hours, prune ran once.
