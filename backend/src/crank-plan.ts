@@ -102,13 +102,15 @@ export const EXPIRY_WAIT = 120;
 /**
  * Seconds to wait so a series expiring right after the tick is settled and
  * replaced in this tick, not 15 minutes later (which would also push every
- * later series 15 minutes back). 0 when nothing expires within `limit`.
- * The result includes a 2 second margin for the chain clock.
+ * later series 15 minutes back). Waits for the last such series, so two
+ * series expiring seconds apart are both handled in this tick. 0 when nothing
+ * expires within `limit`. The result includes a 2 second margin for the chain
+ * clock.
  */
 export function expiryWait(series: SeriesState[], now: number, limit = EXPIRY_WAIT): number {
-  let soonest = Infinity;
+  let last = 0;
   for (const s of series) {
-    if (!s.settled && s.expiryTs > now && s.expiryTs - now <= limit) soonest = Math.min(soonest, s.expiryTs);
+    if (!s.settled && s.expiryTs > now && s.expiryTs - now <= limit) last = Math.max(last, s.expiryTs);
   }
-  return soonest === Infinity ? 0 : soonest - now + 2;
+  return last === 0 ? 0 : last - now + 2;
 }
