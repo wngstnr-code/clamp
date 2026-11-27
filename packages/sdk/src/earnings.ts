@@ -16,7 +16,10 @@ export interface VastEarningsAnswer {
   machines: unknown[] | null;
 }
 
+export type HoursSource = "listed_price" | "typed" | "job_times";
+
 export interface EarningsLine {
+  /** Vast.ai machine id, or Nosana market address. */
   machine: string;
   gpuName: string | null;
   numGpus: number | null;
@@ -27,9 +30,12 @@ export interface EarningsLine {
   totalEarn: number;
   /** The machine's listed price per GPU-hour in micro-USD, when the provider gave it. */
   listedRate: number | null;
-  /** GPU-hours: gpuEarn / listedRate (an estimate), the owner's typed hours, or null. */
+  /**
+   * GPU-hours: gpuEarn / listedRate (an estimate), the owner's typed hours,
+   * the job times (Nosana), or null.
+   */
   estGpuHours: number | null;
-  hoursSource: "listed_price" | "typed" | null;
+  hoursSource: HoursSource | null;
 }
 
 export interface ClassEarnings {
@@ -39,14 +45,16 @@ export interface ClassEarnings {
   estGpuHours: number | null;
   /**
    * gpuEarn / estGpuHours in micro-USD per GPU-hour, rounded down, or null.
-   * With hours from the listed price this is the listed price again, not
-   * what the owner really earned per hour: show it as the listed rate.
+   * Only an earned rate when `hoursSource` is "typed" or "job_times". With
+   * "listed_price" it is the listed price again: show it as the listed rate.
    */
-  listedRate: number | null;
+  rate: number | null;
+  /** Where the hours of the class came from; "mixed" when lines differ. */
+  hoursSource: HoursSource | "mixed" | null;
 }
 
 export interface EarningsSummary {
-  provider: "vast";
+  provider: "vast" | "nosana";
   days: number;
   /** days * 86,400: the window to pass to `hoursForRest`. */
   windowSecs: number;
@@ -64,17 +72,18 @@ const num = (x: unknown): number | null => {
 };
 
 /** Earnings and estimated GPU-hours per class from lines with a known class. */
-export function summarizeEarnings(days: number, lines: EarningsLine[]): EarningsSummary {
-  const by = new Map<number, { gpuEarn: number; hours: number | null }>();
+export function summarizeEarnings(days: number, lines: EarningsLine[], provider: "vast" | "nosana" = "vast"): EarningsSummary {
+  const by = new Map<number, { gpuEarn: number; hours: number | null; source: HoursSource | "mixed" | null | undefined }>();
   const unassigned: EarningsLine[] = [];
   for (const l of lines) {
     if (l.classId === null) {
       unassigned.push(l);
       continue;
     }
-    const b = by.get(l.classId) ?? { gpuEarn: 0, hours: 0 };
+    const b = by.get(l.classId) ?? { gpuEarn: 0, hours: 0, source: undefined };
     b.gpuEarn += l.gpuEarn;
     b.hours = b.hours === null || l.estGpuHours === null ? null : b.hours + l.estGpuHours;
+    b.source = b.source === undefined || b.source === l.hoursSource ? l.hoursSource : "mixed";
     by.set(l.classId, b);
   }
   const byClass = [...by.entries()]
@@ -82,10 +91,11 @@ export function summarizeEarnings(days: number, lines: EarningsLine[]): Earnings
       classId,
       gpuEarn: b.gpuEarn,
       estGpuHours: b.hours === null ? null : Math.round(b.hours * 1000) / 1000,
-      listedRate: b.hours ? Math.floor(b.gpuEarn / b.hours) : null,
+      rate: b.hours ? Math.floor(b.gpuEarn / b.hours) : null,
+      hoursSource: b.hours === null ? null : (b.source ?? null),
     }))
     .sort((a, b) => a.classId - b.classId);
-  return { provider: "vast", days, windowSecs: days * 86_400, lines, byClass, unassigned, totalEarn: lines.reduce((s, l) => s + l.totalEarn, 0) };
+  return { provider, days, windowSecs: days * 86_400, lines, byClass, unassigned, totalEarn: lines.reduce((s, l) => s + l.totalEarn, 0) };
 }
 
 /**

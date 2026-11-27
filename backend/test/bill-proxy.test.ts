@@ -172,7 +172,7 @@ describe("Vast.ai host earnings", () => {
     expect(new URL(calls[1]!.url).searchParams.get("last_days")).toBe("30");
     const text = JSON.stringify(answer);
     for (const secret of ["host@example.org", "A Host", "Street 1", "T-1", "1.2.3.4", "balance"]) expect(text).not.toContain(secret);
-    expect(parseVastEarnings(answer).byClass).toEqual([{ classId: 1, gpuEarn: 30_000_000, estGpuHours: 100, listedRate: 300_000 }]);
+    expect(parseVastEarnings(answer).byClass).toEqual([{ classId: 1, gpuEarn: 30_000_000, estGpuHours: 100, rate: 300_000, hoursSource: "listed_price" }]);
   });
 
   it("skips the lookup with a given user id and keeps earnings when machines are not readable", async () => {

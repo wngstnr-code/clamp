@@ -36,9 +36,9 @@ describe("Vast.ai host earnings", () => {
     expect(e.lines.find((l) => l.machine === "30")?.estGpuHours).toBeNull();
   });
   it("gives no class estimate when one machine of the class has no price", () => {
-    expect(e.byClass).toEqual([{ classId: 1, gpuEarn: 179_000_000, estGpuHours: null, listedRate: null }]);
+    expect(e.byClass).toEqual([{ classId: 1, gpuEarn: 179_000_000, estGpuHours: null, rate: null, hoursSource: null }]);
     const priced = parseVastEarnings({ ...answer, perMachine: answer.perMachine.slice(0, 2) });
-    expect(priced.byClass).toEqual([{ classId: 1, gpuEarn: 170_000_000, estGpuHours: 600, listedRate: 283_333 }]);
+    expect(priced.byClass).toEqual([{ classId: 1, gpuEarn: 170_000_000, estGpuHours: 600, rate: 283_333, hoursSource: "listed_price" }]);
   });
   it("keeps a GPU no index covers unassigned", () => {
     expect(e.unassigned.map((l) => l.machine)).toEqual(["40"]);
@@ -59,7 +59,7 @@ describe("typed hours", () => {
     const raw = parseVastEarnings({ ...answer, perMachine: answer.perMachine.slice(0, 2), machines: null });
     const lines = raw.unassigned.map((l) => assignMachine(l, "RTX 4090", 1, l.machine === "10" ? 400 : 200));
     expect(lines.every((l) => l.hoursSource === "typed")).toBe(true);
-    expect(summarizeEarnings(30, lines).byClass).toEqual([{ classId: 1, gpuEarn: 170_000_000, estGpuHours: 600, listedRate: 283_333 }]);
+    expect(summarizeEarnings(30, lines).byClass).toEqual([{ classId: 1, gpuEarn: 170_000_000, estGpuHours: 600, rate: 283_333, hoursSource: "typed" }]);
   });
 });
 

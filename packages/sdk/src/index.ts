@@ -10,6 +10,7 @@ export * from "./lock-reader.js";
 export * from "./bill.js";
 export * from "./earnings.js";
 export * from "./settlement.js";
+export * from "./nosana-earnings.js";
 export * from "./math/median.js";
 export * from "./math/twap.js";
 export * from "./math/pool.js";
