@@ -9,6 +9,9 @@
 //   pnpm --filter @clamp/backend series seed   <class> <kind> <seq>
 //   pnpm --filter @clamp/backend series buy|sell <class> <kind> <seq> <side 0|1> <usdc or claims> <keypair.json>
 //   pnpm --filter @clamp/backend series redeem <class> <kind> <seq> <side 0|1> <claims> <keypair.json>
+//   pnpm --filter @clamp/backend series lock-open  <class> <kind> <seq> <side 0|1> <usdc> <hours> <keypair.json>
+//   pnpm --filter @clamp/backend series lock-close <class> <kind> <seq> <side 0|1> <keypair.json>
+//   pnpm --filter @clamp/backend series locks [keypair.json]
 // kind: 0 daily, 1 weekly, 2 monthly. Amounts in whole tUSDC.
 
 import { readFileSync } from "node:fs";
@@ -22,7 +25,13 @@ import {
   classPda,
   clampProgram,
   configPda,
+  escrowPda,
   getIndex,
+  getLocks,
+  getSeries,
+  lockPda,
+  lockSize,
+  lockValueNow,
   getVault,
   idlePda,
   indexPda,
@@ -253,7 +262,80 @@ async function main() {
     console.log(`${cmd} (${sig}): user holds ${bal.value.uiAmountString} ${side === 0 ? "UP" : "DOWN"}`);
     return;
   }
-  throw new Error("usage: series show|create|mint|merge|vault-init|deposit|seed|buy|sell|redeem ...");
+  if (cmd === "locks") {
+    const owner = load(a ?? "test-user-1.json").publicKey;
+    const now = Math.floor(Date.now() / 1000);
+    for (const l of await getLocks(connection, owner)) {
+      const s = await getSeries(connection, l.series);
+      const idx = s ? await getIndex(connection, s.classId) : null;
+      const value = s && idx ? lockValueNow(l, s, idx, now) : null;
+      console.log({
+        lock: l.address.toBase58(),
+        series: l.series.toBase58(),
+        side: l.side === 0 ? "UP" : "DOWN",
+        claims: Number(l.claims) / 1e6,
+        escrow: Number(l.escrowAmount) / 1e6,
+        paid: Number(l.paid) / 1e6,
+        hours: l.hours,
+        refRate: usd(l.refRate),
+        autoRoll: l.autoRoll,
+        valueNow: value && "usdc" in value ? { how: value.how, usdc: Number(value.usdc) / 1e6 } : value,
+      });
+    }
+    return;
+  }
+
+  if (cmd === "lock-open" || cmd === "lock-close") {
+    const seq = Number(c);
+    const side = Number(d);
+    const user = load((cmd === "lock-open" ? process.argv[9] : e) ?? "test-user-1.json");
+    const program = clampProgram(connection, new KeypairWallet(user));
+    const series = seriesPda(classId, kind, seq);
+    const acc = seriesAccounts(series);
+    const lock = lockPda(user.publicKey, series, side);
+    const cfg = await program.account.config.fetch(configPda());
+    const ownerCollateral = getAssociatedTokenAddressSync(TUSDC_MINT, user.publicKey);
+    const common = {
+      owner: user.publicKey,
+      config: configPda(),
+      vault: vaultPda(),
+      idle: idlePda(),
+      treasury: cfg.treasury,
+      tokens: seriesTokens(series, classId),
+      lock,
+      escrow: escrowPda(lock),
+      ownerCollateral,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+    const before = await connection.getTokenAccountBalance(ownerCollateral);
+    if (cmd === "lock-open") {
+      const usdcIn = new BN(Math.round(Number(e) * 1e6));
+      const hours = Number(process.argv[8]);
+      const s = await getSeries(connection, series);
+      const size = s ? lockSize(hours, s, Math.floor(Date.now() / 1000)) : null;
+      const sig = await program.methods
+        .openLock(side, usdcIn, new BN(1), hours, new BN(0), false)
+        .accountsPartial({
+          ...common,
+          claimMint: side === 0 ? acc.upMint : acc.downMint,
+          systemProgram: SystemProgram.programId,
+        } as never)
+        .rpc();
+      const esc = await connection.getTokenAccountBalance(escrowPda(lock));
+      console.log(`lock-open (${sig}): lock ${lock.toBase58()} holds ${esc.value.uiAmountString} claims`);
+      if (size) console.log(`sizing for ${hours} h: ${Number(size.claims) / 1e6} claims (f = ${Number(size.fractionLeftPpm) / 1e6})`);
+    } else {
+      const sig = await program.methods
+        .closeLock(new BN(0))
+        .accountsPartial({ ...common, rentPayer: user.publicKey } as never)
+        .rpc();
+      const after = await connection.getTokenAccountBalance(ownerCollateral);
+      console.log(`lock-close (${sig}): paid ${(Number(after.value.amount) - Number(before.value.amount)) / 1e6} tUSDC`);
+    }
+    return;
+  }
+
+  throw new Error("usage: series show|create|mint|merge|vault-init|deposit|seed|buy|sell|redeem|lock-open|lock-close|locks ...");
 }
 
 main().catch((err) => {
