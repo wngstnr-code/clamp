@@ -221,9 +221,9 @@ describe("review fixes", () => {
     expect((await runpodBill(runpod.fn, KEY, NOW - 86_400, NOW)).pods).toBeNull();
   });
 
-  it("a timeout of a required call still fails", async () => {
+  it("a timeout of a required call answers provider_unreachable without the request", async () => {
     const { fn } = fakeFetch([["https://console.vast.ai/api/v0/charges/", () => "throw"]]);
-    await expect(vastBill(fn, KEY, NOW - 86_400, NOW)).rejects.toThrow(/timeout/);
+    await expect(vastBill(fn, KEY, NOW - 86_400, NOW)).rejects.toMatchObject({ code: "provider_unreachable", status: 504 });
   });
 
   it("a wrong key answers bad_key, a missing right answers provider_error 403", async () => {

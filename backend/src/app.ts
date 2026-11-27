@@ -73,10 +73,10 @@ for (const [provider, read] of [
       return c.json(await read(fetch as Fetch, key, from, to));
     } catch (e) {
       if (e instanceof BillError) {
-        return c.json({ error: e.code, providerStatus: e.providerStatus ?? null }, e.status as 400 | 401 | 502);
+        return c.json({ error: e.code, providerStatus: e.providerStatus ?? null }, e.status as 400 | 401 | 502 | 504);
       }
-      // a timeout or a network error: say so without echoing anything of the request
-      return c.json({ error: "provider_unreachable" }, 504);
+      // a bug of ours, not the provider: say so without echoing anything of the request
+      return c.json({ error: "internal_error" }, 500);
     }
   });
 }
@@ -90,9 +90,9 @@ app.post("/earnings/vast", async (c) => {
     return c.json(await vastEarnings(fetch as Fetch, key, days, userId));
   } catch (e) {
     if (e instanceof BillError) {
-      return c.json({ error: e.code, providerStatus: e.providerStatus ?? null }, e.status as 400 | 401 | 502);
+      return c.json({ error: e.code, providerStatus: e.providerStatus ?? null }, e.status as 400 | 401 | 502 | 504);
     }
-    return c.json({ error: "provider_unreachable" }, 504);
+    return c.json({ error: "internal_error" }, 500);
   }
 });
 

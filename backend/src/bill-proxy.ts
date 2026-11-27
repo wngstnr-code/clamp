@@ -18,7 +18,7 @@ export type Fetch = (url: string, init: { headers: Record<string, string>; signa
 
 export class BillError extends Error {
   constructor(
-    readonly code: "missing_key" | "bad_range" | "bad_key" | "provider_error",
+    readonly code: "missing_key" | "bad_range" | "bad_key" | "provider_error" | "provider_unreachable",
     readonly status: number,
     readonly providerStatus?: number,
   ) {
@@ -46,10 +46,16 @@ export function providerKey(header: string | undefined): string {
 }
 
 async function getJson(fetchFn: Fetch, url: string, key: string): Promise<{ ok: boolean; status: number; body: unknown }> {
-  const res = await fetchFn(url, {
-    headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
+  let res: Response;
+  try {
+    res = await fetchFn(url, {
+      headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch {
+    // a timeout or a network error, never echoed
+    throw new BillError("provider_unreachable", 504);
+  }
   let body: unknown = null;
   try {
     body = await res.json();
