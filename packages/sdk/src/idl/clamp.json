@@ -1522,6 +1522,241 @@
       ]
     },
     {
+      "name": "roll_lock",
+      "docs": [
+        "Rolls a settled lock with auto-roll into the current series of its class and kind. Anyone."
+      ],
+      "discriminator": [
+        30,
+        100,
+        224,
+        206,
+        15,
+        171,
+        5,
+        105
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "idle",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "old_tokens",
+          "accounts": [
+            {
+              "name": "series",
+              "writable": true
+            },
+            {
+              "name": "index_state"
+            },
+            {
+              "name": "up_mint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "down_mint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "up_vault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "down_vault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral_mint"
+            }
+          ]
+        },
+        {
+          "name": "new_tokens",
+          "accounts": [
+            {
+              "name": "series",
+              "writable": true
+            },
+            {
+              "name": "index_state"
+            },
+            {
+              "name": "up_mint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "down_mint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "up_vault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "down_vault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral_mint"
+            }
+          ]
+        },
+        {
+          "name": "class_config"
+        },
+        {
+          "name": "old_lock",
+          "writable": true
+        },
+        {
+          "name": "old_escrow",
+          "writable": true
+        },
+        {
+          "name": "old_rent_payer",
+          "writable": true
+        },
+        {
+          "name": "new_lock",
+          "writable": true
+        },
+        {
+          "name": "new_claim_mint",
+          "docs": [
+            "The mint of the lock's side in the new series (checked in the handler)."
+          ]
+        },
+        {
+          "name": "new_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "new_lock"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner_collateral",
+          "docs": [
+            "The owner's collateral account: receives what the new buy does not spend."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "seed_series",
       "docs": [
         "Puts the vault's allocation into the pool of a series. Anyone, once."
@@ -2493,6 +2728,19 @@
       ]
     },
     {
+      "name": "LockRolled",
+      "discriminator": [
+        12,
+        58,
+        51,
+        86,
+        16,
+        115,
+        186,
+        235
+      ]
+    },
+    {
       "name": "PairsMerged",
       "discriminator": [
         71,
@@ -2839,6 +3087,26 @@
       "code": 6037,
       "name": "WrongLockSeries",
       "msg": "The lock belongs to another series"
+    },
+    {
+      "code": 6038,
+      "name": "AutoRollOff",
+      "msg": "Auto-roll is off for this lock"
+    },
+    {
+      "code": 6039,
+      "name": "NotCurrentSeries",
+      "msg": "The new series is not the current series of the same class and kind"
+    },
+    {
+      "code": 6040,
+      "name": "NothingToRoll",
+      "msg": "Nothing to roll: the claims are worth 0 or the lock has 0 hours"
+    },
+    {
+      "code": 6041,
+      "name": "RollPriceTooHigh",
+      "msg": "The pool price is too far above the fair value to roll now"
     }
   ],
   "types": [
@@ -3508,6 +3776,66 @@
           {
             "name": "auto_roll",
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LockRolled",
+      "docs": [
+        "`roll_lock` redeemed `old_claims` for `payout`, spent `usdc_in` on",
+        "`new_claims` in the new series and paid `leftover` to the owner."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_lock",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_lock",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_series",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_series",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": "u8"
+          },
+          {
+            "name": "old_claims",
+            "type": "u64"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          },
+          {
+            "name": "usdc_in",
+            "type": "u64"
+          },
+          {
+            "name": "new_claims",
+            "type": "u64"
+          },
+          {
+            "name": "leftover",
+            "type": "u64"
+          },
+          {
+            "name": "caller",
+            "type": "pubkey"
           }
         ]
       }

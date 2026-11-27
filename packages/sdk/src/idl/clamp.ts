@@ -1528,6 +1528,241 @@ export type Clamp = {
       ]
     },
     {
+      "name": "rollLock",
+      "docs": [
+        "Rolls a settled lock with auto-roll into the current series of its class and kind. Anyone."
+      ],
+      "discriminator": [
+        30,
+        100,
+        224,
+        206,
+        15,
+        171,
+        5,
+        105
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "idle",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "oldTokens",
+          "accounts": [
+            {
+              "name": "series",
+              "writable": true
+            },
+            {
+              "name": "indexState"
+            },
+            {
+              "name": "upMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "upVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateralMint"
+            }
+          ]
+        },
+        {
+          "name": "newTokens",
+          "accounts": [
+            {
+              "name": "series",
+              "writable": true
+            },
+            {
+              "name": "indexState"
+            },
+            {
+              "name": "upMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "upVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateralMint"
+            }
+          ]
+        },
+        {
+          "name": "classConfig"
+        },
+        {
+          "name": "oldLock",
+          "writable": true
+        },
+        {
+          "name": "oldEscrow",
+          "writable": true
+        },
+        {
+          "name": "oldRentPayer",
+          "writable": true
+        },
+        {
+          "name": "newLock",
+          "writable": true
+        },
+        {
+          "name": "newClaimMint",
+          "docs": [
+            "The mint of the lock's side in the new series (checked in the handler)."
+          ]
+        },
+        {
+          "name": "newEscrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "newLock"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ownerCollateral",
+          "docs": [
+            "The owner's collateral account: receives what the new buy does not spend."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "seedSeries",
       "docs": [
         "Puts the vault's allocation into the pool of a series. Anyone, once."
@@ -2499,6 +2734,19 @@ export type Clamp = {
       ]
     },
     {
+      "name": "lockRolled",
+      "discriminator": [
+        12,
+        58,
+        51,
+        86,
+        16,
+        115,
+        186,
+        235
+      ]
+    },
+    {
       "name": "pairsMerged",
       "discriminator": [
         71,
@@ -2845,6 +3093,26 @@ export type Clamp = {
       "code": 6037,
       "name": "wrongLockSeries",
       "msg": "The lock belongs to another series"
+    },
+    {
+      "code": 6038,
+      "name": "autoRollOff",
+      "msg": "Auto-roll is off for this lock"
+    },
+    {
+      "code": 6039,
+      "name": "notCurrentSeries",
+      "msg": "The new series is not the current series of the same class and kind"
+    },
+    {
+      "code": 6040,
+      "name": "nothingToRoll",
+      "msg": "Nothing to roll: the claims are worth 0 or the lock has 0 hours"
+    },
+    {
+      "code": 6041,
+      "name": "rollPriceTooHigh",
+      "msg": "The pool price is too far above the fair value to roll now"
     }
   ],
   "types": [
@@ -3514,6 +3782,66 @@ export type Clamp = {
           {
             "name": "autoRoll",
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "lockRolled",
+      "docs": [
+        "`roll_lock` redeemed `old_claims` for `payout`, spent `usdc_in` on",
+        "`new_claims` in the new series and paid `leftover` to the owner."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "oldLock",
+            "type": "pubkey"
+          },
+          {
+            "name": "newLock",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "oldSeries",
+            "type": "pubkey"
+          },
+          {
+            "name": "newSeries",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": "u8"
+          },
+          {
+            "name": "oldClaims",
+            "type": "u64"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          },
+          {
+            "name": "usdcIn",
+            "type": "u64"
+          },
+          {
+            "name": "newClaims",
+            "type": "u64"
+          },
+          {
+            "name": "leftover",
+            "type": "u64"
+          },
+          {
+            "name": "caller",
+            "type": "pubkey"
           }
         ]
       }
