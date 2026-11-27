@@ -57,7 +57,8 @@ export const app = new Hono();
  * of ours, and it only works with the caller's own provider key. The key and
  * the answer are never logged or stored.
  */
-app.use("/bill/*", cors({ origin: "*", allowMethods: ["POST"], allowHeaders: ["Content-Type", "X-Provider-Key"], maxAge: 600 }));
+const providerCors = cors({ origin: "*", allowMethods: ["POST"], allowHeaders: ["Content-Type", "X-Provider-Key"], maxAge: 600 });
+app.use("/bill/*", providerCors);
 for (const [provider, read] of [
   ["vast", vastBill],
   ["runpod", runpodBill],
@@ -71,7 +72,7 @@ for (const [provider, read] of [
       return c.json(await read(fetch as Fetch, key, from, to));
     } catch (e) {
       if (e instanceof BillError) {
-        return c.json({ error: e.code, providerStatus: e.providerStatus ?? null }, e.status as 400 | 502);
+        return c.json({ error: e.code, providerStatus: e.providerStatus ?? null }, e.status as 400 | 401 | 502);
       }
       // a timeout or a network error: say so without echoing anything of the request
       return c.json({ error: "provider_unreachable" }, 504);

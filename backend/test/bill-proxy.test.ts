@@ -8,7 +8,7 @@ const KEY = "test-key-not-real";
 const NOW = 1_800_000_000;
 
 /** A fake provider: answers by URL prefix and records every call. */
-function fakeFetch(routes: [string, (url: URL) => { status: number; body: unknown }][]) {
+function fakeFetch(routes: [string, (url: URL) => { status: number; body: unknown } | "throw"][]) {
   const calls: { url: string; headers: Record<string, string> }[] = [];
   const fn: Fetch = async (url, init) => {
     calls.push({ url, headers: init.headers });
@@ -16,6 +16,7 @@ function fakeFetch(routes: [string, (url: URL) => { status: number; body: unknow
     for (const [prefix, answer] of routes) {
       if (url.startsWith(prefix)) {
         const a = answer(u);
+        if (a === "throw") throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
         return new Response(JSON.stringify(a.body), { status: a.status });
       }
     }
@@ -132,5 +133,30 @@ describe("routes", () => {
     });
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "bad_range", providerStatus: null });
+  });
+});
+
+describe("review fixes", () => {
+  it("a timeout of a best-effort call keeps what was read", async () => {
+    const vast = fakeFetch([
+      ["https://console.vast.ai/api/v0/charges/", () => ({ status: 200, body: { results: [], next_token: null } })],
+      ["https://console.vast.ai/api/v1/instances/", () => "throw"],
+    ]);
+    expect((await vastBill(vast.fn, KEY, NOW - 86_400, NOW)).instances).toBeNull();
+    const runpod = fakeFetch([
+      ["https://api.runpod.io/v2/billing/pods", () => ({ status: 200, body: { records: [], metadata: {} } })],
+      ["https://api.runpod.io/v2/pods", () => "throw"],
+    ]);
+    expect((await runpodBill(runpod.fn, KEY, NOW - 86_400, NOW)).pods).toBeNull();
+  });
+
+  it("a timeout of a required call still fails", async () => {
+    const { fn } = fakeFetch([["https://console.vast.ai/api/v0/charges/", () => "throw"]]);
+    await expect(vastBill(fn, KEY, NOW - 86_400, NOW)).rejects.toThrow(/timeout/);
+  });
+
+  it("a wrong key answers bad_key", async () => {
+    const bill = fakeFetch([["https://api.runpod.io/v2/billing/pods", () => ({ status: 401, body: {} })]]);
+    await expect(runpodBill(bill.fn, KEY, NOW - 86_400, NOW)).rejects.toMatchObject({ code: "bad_key" });
   });
 });

@@ -18,7 +18,7 @@ export type Fetch = (url: string, init: { headers: Record<string, string>; signa
 
 export class BillError extends Error {
   constructor(
-    readonly code: "missing_key" | "bad_range" | "provider_error",
+    readonly code: "missing_key" | "bad_range" | "bad_key" | "provider_error",
     readonly status: number,
     readonly providerStatus?: number,
   ) {
@@ -59,6 +59,21 @@ async function getJson(fetchFn: Fetch, url: string, key: string): Promise<{ ok: 
   return { ok: res.ok, status: res.status, body };
 }
 
+/** For a required call: a provider 401 means the key is wrong, anything else is a provider error. */
+function providerFailure(status: number): BillError {
+  return status === 401 ? new BillError("bad_key", 401, 401) : new BillError("provider_error", 502, status);
+}
+
+/** For a best-effort call: a refusal, a timeout or a network error all give null. */
+async function tryGetJson(fetchFn: Fetch, url: string, key: string): Promise<{ ok: boolean; status: number; body: unknown } | null> {
+  try {
+    const r = await getJson(fetchFn, url, key);
+    return r.ok ? r : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Vast.ai: instance charges of the window (all pages) and the GPU of each instance. */
 export async function vastBill(fetchFn: Fetch, key: string, from: number, to: number): Promise<VastBillAnswer> {
   const filters = JSON.stringify({ day: { gte: from, lte: to }, type: { in: ["instance"] } });
@@ -68,7 +83,7 @@ export async function vastBill(fetchFn: Fetch, key: string, from: number, to: nu
     const q = new URLSearchParams({ select_filters: filters, limit: "500" });
     if (after) q.set("after_token", after);
     const r = await getJson(fetchFn, `${VAST_BASE}/api/v0/charges/?${q}`, key);
-    if (!r.ok) throw new BillError("provider_error", 502, r.status);
+    if (!r.ok) throw providerFailure(r.status);
     const body = (r.body ?? {}) as { results?: unknown; next_token?: unknown };
     for (const c of Array.isArray(body.results) ? body.results : []) charges.push(pickVastCharge(c));
     after = typeof body.next_token === "string" ? body.next_token : null;
@@ -81,8 +96,8 @@ export async function vastBill(fetchFn: Fetch, key: string, from: number, to: nu
   for (let page = 0; page < MAX_PAGES; page++) {
     const q = new URLSearchParams({ limit: "25", select_cols: JSON.stringify(["id", "gpu_name", "num_gpus"]) });
     if (after) q.set("after_token", after);
-    const r = await getJson(fetchFn, `${VAST_BASE}/api/v1/instances/?${q}`, key);
-    if (!r.ok) {
+    const r = await tryGetJson(fetchFn, `${VAST_BASE}/api/v1/instances/?${q}`, key);
+    if (!r) {
       instances = null;
       break;
     }
@@ -117,7 +132,7 @@ export async function runpodBill(fetchFn: Fetch, key: string, from: number, to: 
   const iso = (t: number) => new Date(t * 1000).toISOString();
   const q = new URLSearchParams({ startTime: iso(from), endTime: iso(to), bucketSize: "day" });
   const r = await getJson(fetchFn, `${RUNPOD_BASE}/v2/billing/pods?${q}`, key);
-  if (!r.ok) throw new BillError("provider_error", 502, r.status);
+  if (!r.ok) throw providerFailure(r.status);
   const body = (r.body ?? {}) as { records?: unknown };
   const records = (Array.isArray(body.records) ? body.records : []).map((rec) => {
     const x = (rec ?? {}) as Record<string, unknown>;
@@ -130,8 +145,8 @@ export async function runpodBill(fetchFn: Fetch, key: string, from: number, to: 
   for (let page = 0; page < MAX_PAGES; page++) {
     const pq = new URLSearchParams({ limit: "1000" });
     if (cursor) pq.set("cursor", cursor);
-    const p = await getJson(fetchFn, `${RUNPOD_BASE}/v2/pods?${pq}`, key);
-    if (!p.ok) {
+    const p = await tryGetJson(fetchFn, `${RUNPOD_BASE}/v2/pods?${pq}`, key);
+    if (!p) {
       pods = null;
       break;
     }
@@ -145,3 +160,4 @@ export async function runpodBill(fetchFn: Fetch, key: string, from: number, to: 
   }
   return { provider: "runpod", from, to, records, pods };
 }
+
