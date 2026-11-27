@@ -604,6 +604,8 @@ pub fn handle_roll_lock(ctx: Context<RollLock>) -> Result<()> {
         lock.escrow = escrow_key;
         lock.bump = bump;
         lock.ref_rate = ref_rate;
+        // a new lock keeps auto-roll; an existing one keeps the owner's choice
+        lock.auto_roll = true;
     }
     lock.claims = lock
         .claims
@@ -617,7 +619,6 @@ pub fn handle_roll_lock(ctx: Context<RollLock>) -> Result<()> {
         .hours
         .checked_add(hours)
         .ok_or(ClampError::MathOverflow)?;
-    lock.auto_roll = true;
     emit!(LockRolled {
         old_lock: a.old_lock.key(),
         new_lock: lock.key(),

@@ -1775,14 +1775,16 @@ fn roll_lock_adds_to_an_existing_lock_in_the_new_series() {
     let (mut env, old) = market();
     env.open_lock(old, 0, auto(10 * USDC, 10)).unwrap();
     let new = env.next_daily(old, 310_000);
+    // the owner's lock in the new series has auto-roll off
     env.open_lock(new, 0, OpenArgs::buy(USDC)).unwrap();
     let before: Lock = read(&env.svm, &env.user_lock(&new, 0));
+    assert!(!before.auto_roll);
     let crank = env.stranger();
     env.roll(&crank, old, new, 0).unwrap();
     let after: Lock = read(&env.svm, &env.user_lock(&new, 0));
     assert!(after.claims > before.claims);
     assert_eq!(after.hours, before.hours + 10);
-    assert!(after.auto_roll);
+    assert!(!after.auto_roll, "the roll keeps the owner's choice");
     assert_eq!(
         after.rent_payer,
         env.user.pubkey(),
