@@ -98,7 +98,7 @@ Done when: a second wallet deposits, a series runs and is swept, and both deposi
 
 ## M5: Revenue Lock (Saturday 2026-11-28, midday)
 
-- [ ] W: earnings reader for Vast.ai hosts
+- [x] W: earnings reader for Vast.ai hosts (code and tests; not tried with a host account)
 - [ ] AG: Revenue Lock page (mirror of Bill Lock, buys DOWN)
 
 Done when: an owner flow opens a DOWN lock on devnet, sized from real earnings data or, if no pilot owner is available yet, from hours typed in by the user (shown as typed in).

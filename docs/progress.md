@@ -92,6 +92,7 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 | A5  | Reporters on free schedulers report reliably every 15 minutes                                                                                         | M1                                                               | Longer interval. `MAX_GAP` already keeps the average honest.                                                                  | open                                                                                                                                                                |
 | A6  | A scoped Vast.ai key with `billing_read` and `instance_read` can read `GET /api/v0/charges`                                                           | The humans, once the account exists: call it with the scoped key | Use invoices and earnings only (both are listed under `billing_read`)                                                         | open. The charges endpoint is in no published permission group.                                                                                                     |
 | A8  | A RunPod key with read-only rights can call `GET https://api.runpod.io/v2/billing/pods`                                                               | The humans, once the account exists                              | Cut RunPod bill reading (cut line 4)                                                                                          | open. Endpoint and bearer auth confirmed in the docs. Key scopes not found.                                                                                         |
+| A18 | A Vast.ai host key with `billing_read` reads `machine-earnings` and the API honours `last_days`, and `GET /api/v0/machines` returns `gpu_name`, `num_gpus` and `listed_gpu_cost` | A pilot owner, or anyone with a Vast.ai host account | The owner names the GPU and types the hours (already supported) | open, from the M5 code on 2026-11-27 |
 | A12 | Compute use of `create_series`, `buy` with re-centering, `settle_series` and `submit_report` stays within limits                                      | M1, M2                                                           | Split instructions                                                                                                            | open                                                                                                                                                                |
 | A15 | The installed Anchor and Solana CLI versions work together                                                                                            | M0                                                               | Pin the pair the Anchor release notes name                                                                                    | open                                                                                                                                                                |
 | A16 | A zkTLS proof of the Vast.ai request can be made and checked in the browser within the free plan                                                      | Stretch (D-039)                                                  | Drop the stretch goal                                                                                                         | open                                                                                                                                                                |
@@ -108,12 +109,26 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 | M2 Claim market                  | Wangsit part done 2026-11-19: the first daily series went from creation to settlement, sweep and redeem with real devnet transactions, all by the crank except the user trades. AG part open (faucet and market pages).          |
 | M3 Bill Lock                     | Started 2026-11-27 22:09 WIB (hackathon window). Stages 1 (lock instructions), 2 (deploy), 3 (SDK readers and sizing) and 4 (bill proxy and parser, code only) done 2026-11-27. The real bill test waits for 2026-11-28. |
 | M4 Vault complete | Wangsit part done 2026-11-27 (tests and devnet check, the program code was already there from M2). AG part open (vault page). |
-| M5 Revenue Lock                  | not started                                                                                                                                                                                                                      |
+| M5 Revenue Lock | Wangsit part done in code 2026-11-27 (earnings proxy and parser, tests with a fake provider). Not tried with a host account: no pilot owner yet, so the done-when uses hours typed in by the owner. AG part open (Revenue Lock page). |
 | M6 Proof, SDK, auto-roll, Nosana | not started                                                                                                                                                                                                                      |
 | M7 Submission                    | not started                                                                                                                                                                                                                      |
 
 
 ## Review notes
+
+### Code review of M4 and M5 (2026-11-27, high level)
+
+| Finding | Severity | Fix |
+|---|---|---|
+| A timeout or network error of a best-effort call (Vast.ai instances and machines, Runpod pods) failed the whole request, so earnings or charges already read were lost | medium | Best-effort calls give `null` on any failure; required calls still fail. Tests for each |
+| A raw earnings file was taken as 30 days and a raw bill file as window 0, so `hoursForRest` scaled the lock size wrongly | medium | Raw files need the window (bill) or the days (earnings) from the user; summaries carry `windowSecs` |
+| A saved bill answer and a saved earnings answer both say `provider: "vast"`, so each file parser crashed on the other's file | medium | Each parser checks its own array field and throws the clear "unknown file" error |
+| `last_days` is never checked against the real API | medium | Open: added to A18, checked with a real host key |
+| The earnings class `rate` is the listed price, not the earned rate | low | Renamed `listedRate`, documented |
+| `assignMachine` could not give hours, so an assigned machine never counted | low | Optional typed GPU-hours (`hoursSource: "typed"`) |
+| A wrong key and a missing right gave the same error | low | 401 from the provider answers `bad_key` |
+| `check-dashes` fails on the untracked `web/AGENTS.md` (generated by `next dev`, AG's area) | low | For AG: delete it or add it to `.gitignore` |
+
 
 ### Gap review before code (2026-11-17)
 
@@ -220,6 +235,15 @@ Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-27, M5 Wangsit part: host earnings reader (Wangsit, during the hackathon)
+
+- `POST /earnings/vast` in `backend/src/bill-proxy.ts` and the parser `packages/sdk/src/earnings.ts`, shapes from the Vast.ai API reference (show-earnings, show-machines, show-user) read on 2026-11-27. The earnings answer of Vast.ai also carries the host's name, email, address, tax data and balance: the proxy passes on `per_machine` only, and a test checks that none of it, nor the machine IP, leaves the proxy.
+- Vast.ai gives earnings in dollars only. GPU-hours are estimated from the machine's listed price per GPU-hour and marked as an estimate; without a price the owner types the hours (allowed by the M5 done-when). The fields `gpu_name`, `num_gpus`, `listed_gpu_cost` are not in the published machines schema, so they are read only when present.
+- Key scopes for an owner: `billing_read` (earnings), plus `user_read` to find the user id (or the owner types it), plus `machine_read` for the GPU of each machine. To check with a real host key (new assumption A18).
+- 5 parser tests (102 in the SDK), 5 proxy tests (39 in the backend). Not deployed until pushed.
+- Contract change for AG: new route and SDK functions (`architecture.md` section 5 and the SDK list).
+
 
 ### 2026-11-27, M4 Wangsit part: vault checks (Wangsit, during the hackathon)
 
