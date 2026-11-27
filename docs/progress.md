@@ -107,7 +107,7 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 | M1 Index live                    | Wangsit part done 2026-11-18 (index on devnet, three reporters, quorum 2, every 15 minutes). AG part open (index pages).                                                                                                         |
 | M2 Claim market                  | Wangsit part done 2026-11-19: the first daily series went from creation to settlement, sweep and redeem with real devnet transactions, all by the crank except the user trades. AG part open (faucet and market pages).          |
 | M3 Bill Lock                     | Started 2026-11-27 22:09 WIB (hackathon window). Stages 1 (lock instructions), 2 (deploy), 3 (SDK readers and sizing) and 4 (bill proxy and parser, code only) done 2026-11-27. The real bill test waits for 2026-11-28. |
-| M4 Vault complete                | not started                                                                                                                                                                                                                      |
+| M4 Vault complete | Wangsit part done 2026-11-27 (tests and devnet check, the program code was already there from M2). AG part open (vault page). |
 | M5 Revenue Lock                  | not started                                                                                                                                                                                                                      |
 | M6 Proof, SDK, auto-roll, Nosana | not started                                                                                                                                                                                                                      |
 | M7 Submission                    | not started                                                                                                                                                                                                                      |
@@ -220,6 +220,15 @@ Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-27, M4 Wangsit part: vault checks (Wangsit, during the hackathon)
+
+- The vault instructions (`deposit`, `withdraw`, the allocation cap, the active series checks) were already in the program since M2. M4 added the missing tests, no program change, no redeploy.
+- 5 new LiteSVM tests (26 in `test_series.rs`): two depositors through a series with trades and a lock, settle, sweep, both withdraw at the same price per share (1.000730 and 1.000731); withdrawals wait for idle USDC (`NotEnoughIdle`) until the sweep; the NAV refuses missing, swapped, wrong-index or repeated series accounts (`ActiveSeriesMismatch`); a donation attack after a 10 USDC first deposit costs the attacker about 999 USDC while the next depositor loses 0.33 of 500 USDC to rounding; dust deposits and empty withdrawals are refused.
+- Devnet check of the done-when: the two depositors of the devnet vault (test user 2 and the deployer, deposits from 2026-11-18, before the hackathon) each withdrew 10 shares now and each got 10.001305 tUSDC (tx `2r6NGo1F...` and `4DU1HGF4...`), share price 1.00013 after the series and sweeps since then. CLI `series withdraw` added.
+- Not covered by a test: `ActiveListFull` (8 active series need more classes than the test setup has). It is one `require!` in `seed_series`.
+- Next: the M3 real bill test on 2026-11-28, then M5 (Vast.ai host earnings reader).
+
 
 ### 2026-11-27, M3 stage 1: lock instructions (Wangsit, during the hackathon)
 
