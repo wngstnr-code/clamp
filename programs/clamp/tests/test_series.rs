@@ -1613,3 +1613,265 @@ fn dust_deposits_and_withdrawals_are_refused() {
     let other = env.funded(0);
     assert_err(env.withdraw(&other, 1), "insufficient funds");
 }
+
+// ---------------------------------------------------------------- roll (M6)
+
+struct RollArgs {
+    old_series: Pubkey,
+    new_series: Pubkey,
+    side: u8,
+    new_claim_mint: Pubkey,
+    old_rent_payer: Pubkey,
+}
+
+impl Env {
+    fn roll_with(&mut self, caller: &Keypair, r: RollArgs) -> Result<u64, String> {
+        let owner = self.user.pubkey();
+        let old_lock = lock_pda(&owner, &r.old_series, r.side);
+        let new_lock = lock_pda(&owner, &r.new_series, r.side);
+        let accounts = clamp::accounts::RollLock {
+            caller: caller.pubkey(),
+            config: config_pda(),
+            vault: vault_pda(),
+            idle: idle_pda(),
+            treasury: self.treasury,
+            old_tokens: self.series_tokens(r.old_series),
+            new_tokens: self.series_tokens(r.new_series),
+            class_config: class_pda(),
+            old_lock,
+            old_escrow: child(b"escrow", &old_lock),
+            old_rent_payer: r.old_rent_payer,
+            new_lock,
+            new_claim_mint: r.new_claim_mint,
+            new_escrow: child(b"escrow", &new_lock),
+            owner_collateral: self.user_collateral(),
+            token_program: anchor_spl::token::ID,
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None);
+        let data = clamp::instruction::RollLock {}.data();
+        send(
+            &mut self.svm,
+            Instruction::new_with_bytes(clamp::id(), &data, accounts),
+            caller,
+        )
+    }
+
+    fn roll(
+        &mut self,
+        caller: &Keypair,
+        old: Pubkey,
+        new: Pubkey,
+        side: u8,
+    ) -> Result<u64, String> {
+        let payer = self.user.pubkey();
+        self.roll_with(
+            caller,
+            RollArgs {
+                old_series: old,
+                new_series: new,
+                side,
+                new_claim_mint: side_mint(&new, side),
+                old_rent_payer: payer,
+            },
+        )
+    }
+
+    /// Settles the daily series `old` at `price` and creates and seeds the next one.
+    fn next_daily(&mut self, old: Pubkey, price: u64) -> Pubkey {
+        let s: Series = read(&self.svm, &old);
+        let first = self.now + 600;
+        self.set_time(first);
+        self.run_index(price, s.expiry_ts - self.now);
+        self.settle(old).unwrap();
+        self.create_series(DAILY, s.seq + 1).unwrap();
+        let next = series_pda(DAILY, s.seq + 1);
+        self.seed(next).unwrap();
+        next
+    }
+}
+
+fn auto(usdc_in: u64, hours: u32) -> OpenArgs {
+    OpenArgs {
+        usdc_in,
+        min: 1,
+        hours,
+        ref_rate: 310_000,
+        auto_roll: true,
+    }
+}
+
+#[test]
+fn roll_lock_moves_a_settled_lock_into_the_next_series() {
+    let (mut env, old) = market();
+    env.open_lock(old, 0, auto(10 * USDC, 10)).unwrap();
+    let old_lock: Lock = read(&env.svm, &env.user_lock(&old, 0));
+    let new = env.next_daily(old, 310_000);
+    let all = [old, new];
+    let total = env.total_usdc(&all);
+    let crank = env.stranger();
+    let usdc0 = balance(&env.svm, &env.user_collateral());
+    let cu = env.roll(&crank, old, new, 0).unwrap();
+    println!("roll_lock: {cu} CU");
+
+    let s_old: Series = read(&env.svm, &old);
+    let s_new: Series = read(&env.svm, &new);
+    let payout = old_lock.claims * u64::from(s_old.up_value) / 1_000_000;
+    let target = 10 * (s_new.upper - s_new.lower);
+    let lock: Lock = read(&env.svm, &env.user_lock(&new, 0));
+    assert_eq!(lock.owner, env.user.pubkey());
+    assert_eq!(lock.series, new);
+    assert_eq!(lock.side, 0);
+    assert!(
+        lock.claims >= target,
+        "bought at least hours * W: {} < {target}",
+        lock.claims
+    );
+    assert!(
+        lock.claims < target + 1_000,
+        "and not much more: {}",
+        lock.claims
+    );
+    assert_eq!(balance(&env.svm, &env.escrow_of(&new, 0)), lock.claims);
+    assert_eq!(lock.hours, 10);
+    assert!(lock.auto_roll);
+    assert_eq!(lock.ref_rate, 310_000);
+    assert_eq!(
+        lock.rent_payer,
+        crank.pubkey(),
+        "the caller paid the new rent"
+    );
+    // the owner gets the payout minus what the new claims cost
+    let leftover = balance(&env.svm, &env.user_collateral()) - usdc0;
+    assert_eq!(leftover + lock.paid, payout);
+    assert!(lock.paid > 0 && lock.paid < payout);
+    // the old lock and escrow are gone, their rent went back to the owner
+    assert!(env.svm.get_account(&env.user_lock(&old, 0)).is_none());
+    assert!(env.svm.get_account(&env.escrow_of(&old, 0)).is_none());
+    assert_eq!(env.total_usdc(&all), total, "no tUSDC created or lost");
+}
+
+#[test]
+fn roll_lock_buys_what_it_can_when_the_payout_is_short() {
+    let (mut env, old) = market();
+    env.open_lock(old, 1, auto(2 * USDC, 5_000)).unwrap();
+    let new = env.next_daily(old, 310_000);
+    let usdc0 = balance(&env.svm, &env.user_collateral());
+    let crank = env.stranger();
+    env.roll(&crank, old, new, 1).unwrap();
+    let lock: Lock = read(&env.svm, &env.user_lock(&new, 1));
+    let s_new: Series = read(&env.svm, &new);
+    assert!(lock.claims < 5_000 * (s_new.upper - s_new.lower));
+    assert!(lock.claims > 0);
+    assert_eq!(
+        balance(&env.svm, &env.user_collateral()),
+        usdc0,
+        "all of the payout was spent"
+    );
+}
+
+#[test]
+fn roll_lock_adds_to_an_existing_lock_in_the_new_series() {
+    let (mut env, old) = market();
+    env.open_lock(old, 0, auto(10 * USDC, 10)).unwrap();
+    let new = env.next_daily(old, 310_000);
+    env.open_lock(new, 0, OpenArgs::buy(USDC)).unwrap();
+    let before: Lock = read(&env.svm, &env.user_lock(&new, 0));
+    let crank = env.stranger();
+    env.roll(&crank, old, new, 0).unwrap();
+    let after: Lock = read(&env.svm, &env.user_lock(&new, 0));
+    assert!(after.claims > before.claims);
+    assert_eq!(after.hours, before.hours + 10);
+    assert!(after.auto_roll);
+    assert_eq!(
+        after.rent_payer,
+        env.user.pubkey(),
+        "the first payer keeps the rent"
+    );
+    assert_eq!(balance(&env.svm, &env.escrow_of(&new, 0)), after.claims);
+}
+
+#[test]
+fn roll_lock_refuses_off_unsettled_wrong_or_worthless_locks() {
+    let (mut env, old) = market();
+    env.open_lock(old, 0, auto(10 * USDC, 10)).unwrap();
+    // a DOWN lock with 0 hours and auto-roll off
+    let mut h0 = OpenArgs::buy(USDC);
+    h0.hours = 0;
+    env.open_lock(old, 1, h0).unwrap();
+    let crank = env.stranger();
+    // not settled yet (the next series does not exist either: use the weekly)
+    env.create_series(1, 0).unwrap();
+    let weekly = series_pda(1, 0);
+    assert_err(env.roll(&crank, old, weekly, 0), "NotSettled");
+    let new = env.next_daily(old, 310_000);
+    assert_err(env.roll(&crank, old, new, 1), "AutoRollOff");
+    // another kind, a wrong mint, a wrong rent payer
+    assert_err(env.roll(&crank, old, weekly, 0), "NotCurrentSeries");
+    let me = env.user.pubkey();
+    assert_err(
+        env.roll_with(
+            &crank,
+            RollArgs {
+                old_series: old,
+                new_series: new,
+                side: 0,
+                new_claim_mint: child(b"down", &new),
+                old_rent_payer: me,
+            },
+        ),
+        "WrongMint",
+    );
+    let other = crank.pubkey();
+    assert_err(
+        env.roll_with(
+            &crank,
+            RollArgs {
+                old_series: old,
+                new_series: new,
+                side: 0,
+                new_claim_mint: child(b"up", &new),
+                old_rent_payer: other,
+            },
+        ),
+        "ConstraintAddress",
+    );
+    // with auto-roll on, a lock of 0 hours has nothing to roll into
+    let user = env.user.insecure_clone();
+    env.set_auto_roll(old, 1, &user, true).unwrap();
+    assert_err(env.roll(&crank, old, new, 1), "NothingToRoll");
+    // the auto-roll lock still rolls
+    env.roll(&crank, old, new, 0).unwrap();
+}
+
+#[test]
+fn roll_lock_refuses_a_pool_pushed_far_above_fair_value() {
+    let (mut env, old) = market();
+    env.open_lock(old, 0, auto(10 * USDC, 10)).unwrap();
+    let new = env.next_daily(old, 310_000);
+    // someone buys UP in the new series right before the roll
+    env.trade(new, 0, true, 40 * USDC, 1).unwrap();
+    let crank = env.stranger();
+    assert_err(env.roll(&crank, old, new, 0), "RollPriceTooHigh");
+    // selling back brings the price down and the roll goes through
+    let up = balance(
+        &env.svm,
+        &get_associated_token_address(&env.user.pubkey(), &child(b"up", &new)),
+    );
+    env.trade(new, 0, false, up, 1).unwrap();
+    env.roll(&crank, old, new, 0).unwrap();
+}
+
+#[test]
+fn roll_lock_refuses_claims_that_settled_at_zero() {
+    let (mut env, old) = market();
+    env.open_lock(old, 0, auto(10 * USDC, 10)).unwrap();
+    // the index falls far below the band: UP settles at 0
+    let new = env.next_daily(old, 200_000);
+    let s: Series = read(&env.svm, &old);
+    assert_eq!(s.up_value, 0, "avg {}", s.avg);
+    let crank = env.stranger();
+    assert_err(env.roll(&crank, old, new, 0), "NothingToRoll");
+    // the owner can still close it (redeems 0) and get the rent back
+    env.close_lock(old, 0, 0).unwrap();
+}
