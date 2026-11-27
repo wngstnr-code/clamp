@@ -83,9 +83,11 @@ describe("Vast.ai", () => {
     expect((await vastBill(fn, KEY, NOW - 86_400, NOW)).instances).toBeNull();
   });
 
-  it("reports the provider status when the charges call fails", async () => {
-    const { fn } = fakeFetch([["https://console.vast.ai/api/v0/charges/", () => ({ status: 404, body: { msg: "Invalid user key" } })]]);
-    await expect(vastBill(fn, KEY, NOW - 86_400, NOW)).rejects.toMatchObject({ code: "provider_error", status: 502, providerStatus: 404 });
+  it("answers bad_key for the Vast.ai 404 of an unknown key, provider_error otherwise", async () => {
+    const bad = fakeFetch([["https://console.vast.ai/api/v0/charges/", () => ({ status: 404, body: { msg: "Invalid user key" } })]]);
+    await expect(vastBill(bad.fn, KEY, NOW - 86_400, NOW)).rejects.toMatchObject({ code: "bad_key", status: 401, providerStatus: 404 });
+    const down = fakeFetch([["https://console.vast.ai/api/v0/charges/", () => ({ status: 500, body: {} })]]);
+    await expect(vastBill(down.fn, KEY, NOW - 86_400, NOW)).rejects.toMatchObject({ code: "provider_error", status: 502, providerStatus: 500 });
   });
 });
 

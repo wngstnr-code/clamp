@@ -59,9 +59,14 @@ async function getJson(fetchFn: Fetch, url: string, key: string): Promise<{ ok: 
   return { ok: res.ok, status: res.status, body };
 }
 
-/** For a required call: a provider 401 means the key is wrong, anything else is a provider error. */
-function providerFailure(status: number): BillError {
-  return status === 401 ? new BillError("bad_key", 401, 401) : new BillError("provider_error", 502, status);
+/**
+ * For a required call: a provider 401 means the key is wrong, and so does a
+ * Vast.ai 404 ("Returned when the supplied API key does not match any user",
+ * API reference). Anything else is a provider error.
+ */
+function providerFailure(status: number, provider: "vast" | "runpod"): BillError {
+  if (status === 401 || (provider === "vast" && status === 404)) return new BillError("bad_key", 401, status);
+  return new BillError("provider_error", 502, status);
 }
 
 /** For a best-effort call: a refusal, a timeout or a network error all give null. */
@@ -83,7 +88,7 @@ export async function vastBill(fetchFn: Fetch, key: string, from: number, to: nu
     const q = new URLSearchParams({ select_filters: filters, limit: "500" });
     if (after) q.set("after_token", after);
     const r = await getJson(fetchFn, `${VAST_BASE}/api/v0/charges/?${q}`, key);
-    if (!r.ok) throw providerFailure(r.status);
+    if (!r.ok) throw providerFailure(r.status, "vast");
     const body = (r.body ?? {}) as { results?: unknown; next_token?: unknown };
     for (const c of Array.isArray(body.results) ? body.results : []) charges.push(pickVastCharge(c));
     after = typeof body.next_token === "string" ? body.next_token : null;
@@ -132,7 +137,7 @@ export async function runpodBill(fetchFn: Fetch, key: string, from: number, to: 
   const iso = (t: number) => new Date(t * 1000).toISOString();
   const q = new URLSearchParams({ startTime: iso(from), endTime: iso(to), bucketSize: "day" });
   const r = await getJson(fetchFn, `${RUNPOD_BASE}/v2/billing/pods?${q}`, key);
-  if (!r.ok) throw providerFailure(r.status);
+  if (!r.ok) throw providerFailure(r.status, "runpod");
   const body = (r.body ?? {}) as { records?: unknown };
   const records = (Array.isArray(body.records) ? body.records : []).map((rec) => {
     const x = (rec ?? {}) as Record<string, unknown>;
@@ -192,13 +197,13 @@ export async function vastEarnings(
   if (userId === null) {
     const u = await getJson(fetchFn, `${VAST_BASE}/api/v0/users/current/`, key);
     const id = (u.body as { id?: unknown } | null)?.id;
-    if (!u.ok) throw providerFailure(u.status);
+    if (!u.ok) throw providerFailure(u.status, "vast");
     if (!Number.isInteger(id)) throw new BillError("provider_error", 502, 200);
     userId = id as number;
   }
   const q = new URLSearchParams({ last_days: String(days) });
   const e = await getJson(fetchFn, `${VAST_BASE}/api/v0/users/${userId}/machine-earnings/?${q}`, key);
-  if (!e.ok) throw providerFailure(e.status);
+  if (!e.ok) throw providerFailure(e.status, "vast");
   const per = (e.body as { per_machine?: unknown } | null)?.per_machine;
   const perMachine = (Array.isArray(per) ? per : []).map((p) => {
     const x = (p ?? {}) as Record<string, unknown>;
