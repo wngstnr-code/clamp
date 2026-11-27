@@ -10,7 +10,7 @@
 //   pnpm --filter @clamp/backend series seed   <class> <kind> <seq>
 //   pnpm --filter @clamp/backend series buy|sell <class> <kind> <seq> <side 0|1> <usdc or claims> <keypair.json>
 //   pnpm --filter @clamp/backend series redeem <class> <kind> <seq> <side 0|1> <claims> <keypair.json>
-//   pnpm --filter @clamp/backend series lock-open  <class> <kind> <seq> <side 0|1> <usdc> <hours> <keypair.json>
+//   pnpm --filter @clamp/backend series lock-open  <class> <kind> <seq> <side 0|1> <usdc> <hours left> [keypair.json] [--auto]
 //   pnpm --filter @clamp/backend series lock-close <class> <kind> <seq> <side 0|1> <keypair.json>
 //   pnpm --filter @clamp/backend series locks [keypair.json]
 // kind: 0 daily, 1 weekly, 2 monthly. Amounts in whole tUSDC.
@@ -318,7 +318,9 @@ async function main() {
   if (cmd === "lock-open" || cmd === "lock-close") {
     const seq = Number(c);
     const side = Number(d);
-    const user = load((cmd === "lock-open" ? process.argv[9] : e) ?? "test-user-1.json");
+    const fileArg = cmd === "lock-open" ? process.argv[9] : e;
+    const user = load(fileArg && !fileArg.startsWith("--") ? fileArg : "test-user-1.json");
+    const autoRoll = process.argv.includes("--auto");
     const program = clampProgram(connection, new KeypairWallet(user));
     const series = seriesPda(classId, kind, seq);
     const acc = seriesAccounts(series);
@@ -349,7 +351,7 @@ async function main() {
       const remaining = Math.min(s.expiryTs - now, s.expiryTs - s.startTs);
       const fullHours = remaining > 0 ? Math.round((hours * (s.expiryTs - s.startTs)) / remaining) : hours;
       const sig = await program.methods
-        .openLock(side, usdcIn, new BN(1), fullHours, new BN(0), false)
+        .openLock(side, usdcIn, new BN(1), fullHours, new BN(0), autoRoll)
         .accountsPartial({
           ...common,
           claimMint: side === 0 ? acc.upMint : acc.downMint,
@@ -357,7 +359,7 @@ async function main() {
         } as never)
         .rpc();
       const esc = await connection.getTokenAccountBalance(escrowPda(lock));
-      console.log(`lock-open (${sig}): lock ${lock.toBase58()} holds ${esc.value.uiAmountString} claims`);
+      console.log(`lock-open (${sig}): lock ${lock.toBase58()} holds ${esc.value.uiAmountString} claims, auto-roll ${autoRoll ? "on" : "off"}`);
       if (size) console.log(`sizing for ${hours} h left: ${Number(size.claims) / 1e6} claims (f = ${Number(size.fractionLeftPpm) / 1e6}), stored ${fullHours} h per period`);
     } else {
       // a rolled lock's rent goes back to whoever paid it (the crank)
