@@ -4,7 +4,7 @@
 // bill parser in packages/sdk needs. The key lives in memory for one request:
 // it is never stored, never logged and never put in a URL.
 
-import type { RunpodBillAnswer, VastBillAnswer } from "@clamp/sdk";
+import type { RunpodBillAnswer, VastBillAnswer, VastEarningsAnswer } from "@clamp/sdk";
 
 export const BILL_WINDOW_SECS = 30 * 86_400;
 const MAX_WINDOW_SECS = 31 * 86_400;
@@ -161,3 +161,59 @@ export async function runpodBill(fetchFn: Fetch, key: string, from: number, to: 
   return { provider: "runpod", from, to, records, pods };
 }
 
+// ---------------------------------------------------------------- host earnings (M5)
+
+/** Days of host earnings from the request body, default 30, at most 31; and an optional Vast.ai user id. */
+export function earningsRequest(body: unknown): { days: number; userId: number | null } {
+  const b = (body ?? {}) as { days?: unknown; userId?: unknown };
+  const days = b.days === undefined ? 30 : b.days;
+  if (!Number.isInteger(days) || (days as number) < 1 || (days as number) > 31) throw new BillError("bad_range", 400);
+  const userId = b.userId === undefined || b.userId === null ? null : b.userId;
+  if (userId !== null && (!Number.isInteger(userId) || (userId as number) <= 0)) throw new BillError("bad_range", 400);
+  return { days: days as number, userId: userId as number | null };
+}
+
+/**
+ * Vast.ai host earnings of the last `days` days per machine, and the GPU of
+ * each machine. The earnings answer also carries the host's name, email,
+ * address and tax data: only `per_machine` is passed on. Without a user id
+ * in the body the key needs `user_read` to look it up: a refusal there answers
+ * `provider_error` with `providerStatus` 403, a wrong key `bad_key`.
+ * `last_days` is the parameter of the API reference; whether the API honours
+ * it is checked with a real host key (assumption A18).
+ */
+export async function vastEarnings(
+  fetchFn: Fetch,
+  key: string,
+  days: number,
+  userIdIn: number | null,
+): Promise<VastEarningsAnswer> {
+  let userId = userIdIn;
+  if (userId === null) {
+    const u = await getJson(fetchFn, `${VAST_BASE}/api/v0/users/current/`, key);
+    const id = (u.body as { id?: unknown } | null)?.id;
+    if (!u.ok) throw providerFailure(u.status);
+    if (!Number.isInteger(id)) throw new BillError("provider_error", 502, 200);
+    userId = id as number;
+  }
+  const q = new URLSearchParams({ last_days: String(days) });
+  const e = await getJson(fetchFn, `${VAST_BASE}/api/v0/users/${userId}/machine-earnings/?${q}`, key);
+  if (!e.ok) throw providerFailure(e.status);
+  const per = (e.body as { per_machine?: unknown } | null)?.per_machine;
+  const perMachine = (Array.isArray(per) ? per : []).map((p) => {
+    const x = (p ?? {}) as Record<string, unknown>;
+    return { machine_id: x.machine_id, gpu_earn: x.gpu_earn, sto_earn: x.sto_earn, bwu_earn: x.bwu_earn, bwd_earn: x.bwd_earn };
+  });
+
+  // Best effort: a key without machine_read still gets its earnings.
+  let machines: unknown[] | null = null;
+  const m = await tryGetJson(fetchFn, `${VAST_BASE}/api/v0/machines/?${new URLSearchParams({ user_id: String(userId) })}`, key);
+  if (m) {
+    const list = (m.body as { machines?: unknown } | null)?.machines;
+    machines = (Array.isArray(list) ? list : []).map((x) => {
+      const y = (x ?? {}) as Record<string, unknown>;
+      return { id: y.id, gpu_name: y.gpu_name, num_gpus: y.num_gpus, listed_gpu_cost: y.listed_gpu_cost };
+    });
+  }
+  return { provider: "vast", days, perMachine, machines };
+}

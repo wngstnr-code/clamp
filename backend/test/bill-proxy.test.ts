@@ -1,8 +1,8 @@
-import { parseRunpodBill, parseVastBill } from "@clamp/sdk";
+import { parseRunpodBill, parseVastBill, parseVastEarnings } from "@clamp/sdk";
 import { describe, expect, it } from "vitest";
 
 import { app } from "../src/app.js";
-import { BillError, billWindow, providerKey, runpodBill, vastBill, type Fetch } from "../src/bill-proxy.js";
+import { BillError, billWindow, earningsRequest, providerKey, runpodBill, vastBill, vastEarnings, type Fetch } from "../src/bill-proxy.js";
 
 const KEY = "test-key-not-real";
 const NOW = 1_800_000_000;
@@ -136,6 +136,75 @@ describe("routes", () => {
   });
 });
 
+describe("Vast.ai host earnings", () => {
+  const PII = { username: "host", email: "host@example.org", fullname: "A Host", address1: "Street 1", taxinfo: "T-1", current: { balance: 99 } };
+  const routes = (machinesStatus = 200): [string, (u: URL) => { status: number; body: unknown } | "throw"][] => [
+    ["https://console.vast.ai/api/v0/users/current/", () => ({ status: 200, body: { id: 77, ...PII } })],
+    ["https://console.vast.ai/api/v0/users/77/machine-earnings/", () => ({
+      status: 200,
+      body: { ...PII, summary: { total_gpu: 30 }, per_machine: [{ machine_id: 5, gpu_earn: 30, sto_earn: 1, bwu_earn: 0, bwd_earn: 0 }], per_day: [] },
+    })],
+    ["https://console.vast.ai/api/v0/machines/", () => machinesStatus === 0 ? "throw" : ({
+      status: machinesStatus,
+      body: { machines: [{ id: 5, gpu_name: "RTX 4090", num_gpus: 2, listed_gpu_cost: 0.3, public_ipaddr: "1.2.3.4" }] },
+    })],
+  ];
+
+  it("checks the request", () => {
+    expect(earningsRequest({})).toEqual({ days: 30, userId: null });
+    expect(earningsRequest({ days: 7, userId: 77 })).toEqual({ days: 7, userId: 77 });
+    for (const bad of [{ days: 0 }, { days: 32 }, { days: 1.5 }, { userId: -1 }, { userId: "77" }]) {
+      expect(() => earningsRequest(bad)).toThrow(BillError);
+    }
+  });
+
+  it("looks up the user id, passes on earnings per machine only and never the host's personal data", async () => {
+    const { fn, calls } = fakeFetch(routes());
+    const answer = await vastEarnings(fn, KEY, 30, null);
+    expect(calls.map((c) => new URL(c.url).pathname)).toEqual([
+      "/api/v0/users/current/",
+      "/api/v0/users/77/machine-earnings/",
+      "/api/v0/machines/",
+    ]);
+    expect(calls.every((c) => !c.url.includes(KEY) && c.headers.Authorization === `Bearer ${KEY}`)).toBe(true);
+    expect(new URL(calls[1]!.url).searchParams.get("last_days")).toBe("30");
+    const text = JSON.stringify(answer);
+    for (const secret of ["host@example.org", "A Host", "Street 1", "T-1", "1.2.3.4", "balance"]) expect(text).not.toContain(secret);
+    expect(parseVastEarnings(answer).byClass).toEqual([{ classId: 1, gpuEarn: 30_000_000, estGpuHours: 100, listedRate: 300_000 }]);
+  });
+
+  it("skips the lookup with a given user id and keeps earnings when machines are not readable", async () => {
+    const { fn, calls } = fakeFetch(routes(403));
+    const answer = await vastEarnings(fn, KEY, 7, 77);
+    expect(calls[0]!.url).toContain("/users/77/machine-earnings/");
+    expect(answer.machines).toBeNull();
+    expect(answer.perMachine).toHaveLength(1);
+  });
+
+  it("keeps earnings when the machines call times out", async () => {
+    const { fn } = fakeFetch(routes(0));
+    const answer = await vastEarnings(fn, KEY, 30, null);
+    expect(answer.machines).toBeNull();
+    expect(answer.perMachine).toHaveLength(1);
+  });
+
+  it("reports a failed user lookup so the web app can ask for the user id", async () => {
+    const { fn } = fakeFetch([["https://console.vast.ai/api/v0/users/current/", () => ({ status: 403, body: {} })]]);
+    await expect(vastEarnings(fn, KEY, 30, null)).rejects.toMatchObject({ code: "provider_error", providerStatus: 403 });
+  });
+
+  it("has a route with the same checks", async () => {
+    const res = await app.request("/earnings/vast", { method: "POST", headers: { "X-Provider-Key": KEY }, body: JSON.stringify({ days: 99 }) });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "bad_range", providerStatus: null });
+    const pre = await app.request("/earnings/vast", {
+      method: "OPTIONS",
+      headers: { Origin: "https://example.org", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "x-provider-key" },
+    });
+    expect(pre.status).toBe(204);
+  });
+});
+
 describe("review fixes", () => {
   it("a timeout of a best-effort call keeps what was read", async () => {
     const vast = fakeFetch([
@@ -155,7 +224,11 @@ describe("review fixes", () => {
     await expect(vastBill(fn, KEY, NOW - 86_400, NOW)).rejects.toThrow(/timeout/);
   });
 
-  it("a wrong key answers bad_key", async () => {
+  it("a wrong key answers bad_key, a missing right answers provider_error 403", async () => {
+    const wrong = fakeFetch([["https://console.vast.ai/api/v0/users/current/", () => ({ status: 401, body: {} })]]);
+    await expect(vastEarnings(wrong.fn, KEY, 30, null)).rejects.toMatchObject({ code: "bad_key", status: 401 });
+    const noRight = fakeFetch([["https://console.vast.ai/api/v0/users/current/", () => ({ status: 403, body: {} })]]);
+    await expect(vastEarnings(noRight.fn, KEY, 30, null)).rejects.toMatchObject({ code: "provider_error", providerStatus: 403 });
     const bill = fakeFetch([["https://api.runpod.io/v2/billing/pods", () => ({ status: 401, body: {} })]]);
     await expect(runpodBill(bill.fn, KEY, NOW - 86_400, NOW)).rejects.toMatchObject({ code: "bad_key" });
   });

@@ -7,7 +7,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
-import { BillError, billWindow, providerKey, runpodBill, vastBill, type Fetch } from "./bill-proxy.js";
+import { BillError, billWindow, earningsRequest, providerKey, runpodBill, vastBill, vastEarnings, type Fetch } from "./bill-proxy.js";
 import { ARCHIVE_MAX_AGE_SECS, ARCHIVE_MAX_BYTES, verifyArchive } from "./archive-auth.js";
 import { loadEnv } from "./env.js";
 import { Store } from "./store.js";
@@ -59,6 +59,7 @@ export const app = new Hono();
  */
 const providerCors = cors({ origin: "*", allowMethods: ["POST"], allowHeaders: ["Content-Type", "X-Provider-Key"], maxAge: 600 });
 app.use("/bill/*", providerCors);
+app.use("/earnings/*", providerCors);
 for (const [provider, read] of [
   ["vast", vastBill],
   ["runpod", runpodBill],
@@ -79,6 +80,21 @@ for (const [provider, read] of [
     }
   });
 }
+
+/** Host earnings proxy (M5, Revenue Lock): same rules as the bill proxy. */
+app.post("/earnings/vast", async (c) => {
+  c.header("Cache-Control", "no-store");
+  try {
+    const key = providerKey(c.req.header("x-provider-key"));
+    const { days, userId } = earningsRequest(await c.req.json().catch(() => ({})));
+    return c.json(await vastEarnings(fetch as Fetch, key, days, userId));
+  } catch (e) {
+    if (e instanceof BillError) {
+      return c.json({ error: e.code, providerStatus: e.providerStatus ?? null }, e.status as 400 | 401 | 502);
+    }
+    return c.json({ error: "provider_unreachable" }, 504);
+  }
+});
 
 /**
  * Shared raw archive (D-054). The file is stored under the SHA-256 of the
