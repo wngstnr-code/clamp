@@ -1008,3 +1008,410 @@ fn settle_then_sweep_returns_the_vault_units_to_idle() {
         "only the locked units' value stays"
     );
 }
+
+// ---------------------------------------------------------------- locks (M3)
+
+use clamp::state::Lock;
+
+fn lock_pda(owner: &Pubkey, series: &Pubkey, side: u8) -> Pubkey {
+    pda(&[b"lock", owner.as_ref(), series.as_ref(), &[side]])
+}
+
+fn side_mint(series: &Pubkey, side: u8) -> Pubkey {
+    if side == 0 {
+        child(b"up", series)
+    } else {
+        child(b"down", series)
+    }
+}
+
+/// Arguments of `open_lock` after the side.
+struct OpenArgs {
+    usdc_in: u64,
+    min: u64,
+    hours: u32,
+    ref_rate: u64,
+    auto_roll: bool,
+}
+
+impl OpenArgs {
+    fn buy(usdc_in: u64) -> Self {
+        OpenArgs {
+            usdc_in,
+            min: 1,
+            hours: 400,
+            ref_rate: 310_000,
+            auto_roll: false,
+        }
+    }
+}
+
+impl Env {
+    fn open_lock_with(
+        &mut self,
+        series: Pubkey,
+        side: u8,
+        claim_mint: Pubkey,
+        args: OpenArgs,
+    ) -> Result<u64, String> {
+        let owner = self.user.pubkey();
+        let lock = lock_pda(&owner, &series, side);
+        let accounts = clamp::accounts::OpenLock {
+            owner,
+            config: config_pda(),
+            vault: vault_pda(),
+            idle: idle_pda(),
+            treasury: self.treasury,
+            tokens: self.series_tokens(series),
+            lock,
+            claim_mint,
+            escrow: child(b"escrow", &lock),
+            owner_collateral: self.user_collateral(),
+            token_program: anchor_spl::token::ID,
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None);
+        let data = clamp::instruction::OpenLock {
+            side,
+            usdc_in: args.usdc_in,
+            min_claims_out: args.min,
+            hours: args.hours,
+            ref_rate: args.ref_rate,
+            auto_roll: args.auto_roll,
+        }
+        .data();
+        let user = self.user.insecure_clone();
+        send(
+            &mut self.svm,
+            Instruction::new_with_bytes(clamp::id(), &data, accounts),
+            &user,
+        )
+    }
+
+    fn open_lock(&mut self, series: Pubkey, side: u8, args: OpenArgs) -> Result<u64, String> {
+        self.open_lock_with(series, side, side_mint(&series, side), args)
+    }
+
+    /// `close_lock` of the user's lock, sent by `signer`, with `tokens_of`
+    /// as the series accounts and `rent_payer` as the rent receiver.
+    fn close_lock_with(
+        &mut self,
+        lock_series: Pubkey,
+        tokens_of: Pubkey,
+        side: u8,
+        signer: &Keypair,
+        rent_payer: Pubkey,
+        min_usdc_out: u64,
+    ) -> Result<u64, String> {
+        let lock = lock_pda(&self.user.pubkey(), &lock_series, side);
+        let accounts = clamp::accounts::CloseLock {
+            owner: signer.pubkey(),
+            config: config_pda(),
+            vault: vault_pda(),
+            idle: idle_pda(),
+            treasury: self.treasury,
+            tokens: self.series_tokens(tokens_of),
+            lock,
+            escrow: child(b"escrow", &lock),
+            rent_payer,
+            owner_collateral: self.user_collateral(),
+            token_program: anchor_spl::token::ID,
+        }
+        .to_account_metas(None);
+        let data = clamp::instruction::CloseLock { min_usdc_out }.data();
+        send(
+            &mut self.svm,
+            Instruction::new_with_bytes(clamp::id(), &data, accounts),
+            signer,
+        )
+    }
+
+    fn close_lock(&mut self, series: Pubkey, side: u8, min_usdc_out: u64) -> Result<u64, String> {
+        let user = self.user.insecure_clone();
+        let payer = user.pubkey();
+        self.close_lock_with(series, series, side, &user, payer, min_usdc_out)
+    }
+
+    fn withdraw_lock_claims(&mut self, series: Pubkey, side: u8) -> Result<u64, String> {
+        let owner = self.user.pubkey();
+        let lock = lock_pda(&owner, &series, side);
+        let mint = side_mint(&series, side);
+        let accounts = clamp::accounts::WithdrawLockClaims {
+            owner,
+            lock,
+            escrow: child(b"escrow", &lock),
+            claim_mint: mint,
+            owner_claims: get_associated_token_address(&owner, &mint),
+            rent_payer: owner,
+            token_program: anchor_spl::token::ID,
+            associated_token_program: anchor_spl::associated_token::ID,
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None);
+        let data = clamp::instruction::WithdrawLockClaims {}.data();
+        let user = self.user.insecure_clone();
+        send(
+            &mut self.svm,
+            Instruction::new_with_bytes(clamp::id(), &data, accounts),
+            &user,
+        )
+    }
+
+    fn set_auto_roll(
+        &mut self,
+        series: Pubkey,
+        side: u8,
+        signer: &Keypair,
+        on: bool,
+    ) -> Result<u64, String> {
+        let lock = lock_pda(&self.user.pubkey(), &series, side);
+        let accounts = clamp::accounts::SetAutoRoll {
+            owner: signer.pubkey(),
+            lock,
+        }
+        .to_account_metas(None);
+        let data = clamp::instruction::SetAutoRoll { on }.data();
+        send(
+            &mut self.svm,
+            Instruction::new_with_bytes(clamp::id(), &data, accounts),
+            signer,
+        )
+    }
+
+    fn user_lock(&self, series: &Pubkey, side: u8) -> Pubkey {
+        lock_pda(&self.user.pubkey(), series, side)
+    }
+
+    fn escrow_of(&self, series: &Pubkey, side: u8) -> Pubkey {
+        child(b"escrow", &self.user_lock(series, side))
+    }
+
+    fn stranger(&mut self) -> Keypair {
+        let k = Keypair::new();
+        self.svm.airdrop(&k.pubkey(), 1_000_000_000).unwrap();
+        k
+    }
+}
+
+#[test]
+fn open_lock_buys_into_the_escrow_like_a_buy_and_adds_on_a_second_call() {
+    let (mut env, key) = market();
+    let all = [key];
+    let total = env.total_usdc(&all);
+    let cu = env.open_lock(key, 0, OpenArgs::buy(10 * USDC)).unwrap();
+    println!("open_lock (new lock): {cu} CU");
+    let lock: Lock = read(&env.svm, &env.user_lock(&key, 0));
+    let escrow = env.escrow_of(&key, 0);
+    // the same pool math as the plain buy test: 18.908189 UP for 10 USDC
+    assert_eq!(lock.claims, 18_908_189);
+    assert_eq!(balance(&env.svm, &escrow), lock.claims);
+    assert_eq!(lock.owner, env.user.pubkey());
+    assert_eq!(lock.series, key);
+    assert_eq!(lock.side, 0);
+    assert_eq!(lock.paid, 10 * USDC);
+    assert_eq!(lock.hours, 400);
+    assert_eq!(lock.ref_rate, 310_000);
+    assert!(!lock.auto_roll);
+    assert_eq!(lock.rent_payer, env.user.pubkey());
+    assert_eq!(lock.escrow, escrow);
+    assert_eq!(lock.created_ts, env.now);
+    // fees as for a buy: 0.08 to the vault, 0.02 to the treasury
+    assert_eq!(balance(&env.svm, &env.treasury), 20_000);
+    assert_eq!(env.total_usdc(&all), total, "no tUSDC created or lost");
+
+    let cu = env
+        .open_lock(
+            key,
+            0,
+            OpenArgs {
+                usdc_in: 5 * USDC,
+                min: 1,
+                hours: 100,
+                ref_rate: 320_000,
+                auto_roll: true,
+            },
+        )
+        .unwrap();
+    println!("open_lock (add): {cu} CU");
+    let lock2: Lock = read(&env.svm, &env.user_lock(&key, 0));
+    assert!(lock2.claims > lock.claims);
+    assert_eq!(balance(&env.svm, &escrow), lock2.claims);
+    assert_eq!(lock2.paid, 15 * USDC);
+    assert_eq!(lock2.hours, 500);
+    assert_eq!(lock2.ref_rate, 320_000);
+    assert!(lock2.auto_roll);
+    assert_eq!(lock2.created_ts, lock.created_ts);
+    assert_eq!(env.total_usdc(&all), total);
+}
+
+#[test]
+fn close_lock_before_close_sells_pays_the_owner_and_returns_the_rent() {
+    let (mut env, key) = market();
+    let all = [key];
+    let total = env.total_usdc(&all);
+    let sol0 = env.svm.get_account(&env.user.pubkey()).unwrap().lamports;
+    let usdc0 = balance(&env.svm, &env.user_collateral());
+    env.open_lock(key, 0, OpenArgs::buy(10 * USDC)).unwrap();
+    let cu = env.close_lock(key, 0, 1).unwrap();
+    println!("close_lock (sell): {cu} CU");
+    let back = balance(&env.svm, &env.user_collateral()) + 10 * USDC - usdc0;
+    assert!(
+        back > 9 * USDC && back < 10 * USDC,
+        "a round trip pays two fees and slippage: {back}"
+    );
+    assert!(env.svm.get_account(&env.user_lock(&key, 0)).is_none());
+    assert!(env.svm.get_account(&env.escrow_of(&key, 0)).is_none());
+    // only the transaction fees are gone, the rent came back
+    let sol1 = env.svm.get_account(&env.user.pubkey()).unwrap().lamports;
+    assert!(
+        sol0 - sol1 < 100_000,
+        "rent returned: spent {}",
+        sol0 - sol1
+    );
+    assert_eq!(env.total_usdc(&all), total);
+    // the lock can be opened again after a close
+    env.open_lock(key, 0, OpenArgs::buy(USDC)).unwrap();
+}
+
+#[test]
+fn close_lock_waits_for_settlement_then_redeems() {
+    let (mut env, key) = market();
+    let all = [key];
+    let total = env.total_usdc(&all);
+    env.open_lock(key, 0, OpenArgs::buy(10 * USDC)).unwrap();
+    let claims = read::<Lock>(&env.svm, &env.user_lock(&key, 0)).claims;
+    let s: Series = read(&env.svm, &key);
+    env.set_time(s.close_ts);
+    assert_err(env.close_lock(key, 0, 0), "LockWaitsForSettlement");
+    let first = env.now + 600;
+    env.set_time(first);
+    env.run_index(310_000, s.expiry_ts - env.now);
+    assert_err(env.close_lock(key, 0, 0), "LockWaitsForSettlement");
+    env.settle(key).unwrap();
+    let s: Series = read(&env.svm, &key);
+    let payout = claims * u64::from(s.up_value) / 1_000_000;
+    assert_err(env.close_lock(key, 0, payout + 1), "SlippageExceeded");
+    let usdc0 = balance(&env.svm, &env.user_collateral());
+    let cu = env.close_lock(key, 0, payout).unwrap();
+    println!("close_lock (redeem): {cu} CU");
+    assert_eq!(balance(&env.svm, &env.user_collateral()) - usdc0, payout);
+    assert!(env.svm.get_account(&env.user_lock(&key, 0)).is_none());
+    assert_eq!(env.total_usdc(&all), total);
+}
+
+#[test]
+fn a_revenue_lock_buys_down_and_closes() {
+    let (mut env, key) = market();
+    env.open_lock(key, 1, OpenArgs::buy(10 * USDC)).unwrap();
+    let lock: Lock = read(&env.svm, &env.user_lock(&key, 1));
+    assert_eq!(lock.side, 1);
+    let escrow = env.escrow_of(&key, 1);
+    let acc = env.svm.get_account(&escrow).unwrap();
+    assert_eq!(&acc.data[0..32], child(b"down", &key).as_ref());
+    assert_eq!(balance(&env.svm, &escrow), lock.claims);
+    // an UP lock of the same owner and series is a separate account
+    env.open_lock(key, 0, OpenArgs::buy(USDC)).unwrap();
+    env.close_lock(key, 1, 1).unwrap();
+    assert!(env.svm.get_account(&env.user_lock(&key, 0)).is_some());
+}
+
+#[test]
+fn withdraw_lock_claims_moves_them_to_the_wallet_at_any_time() {
+    let (mut env, key) = market();
+    env.open_lock(key, 0, OpenArgs::buy(10 * USDC)).unwrap();
+    let claims = read::<Lock>(&env.svm, &env.user_lock(&key, 0)).claims;
+    // between close and settlement, when close_lock waits
+    let s: Series = read(&env.svm, &key);
+    env.set_time(s.close_ts);
+    env.withdraw_lock_claims(key, 0).unwrap();
+    let ata = get_associated_token_address(&env.user.pubkey(), &s.up_mint);
+    assert_eq!(balance(&env.svm, &ata), claims);
+    assert!(env.svm.get_account(&env.user_lock(&key, 0)).is_none());
+    assert!(env.svm.get_account(&env.escrow_of(&key, 0)).is_none());
+}
+
+#[test]
+fn a_donation_to_the_escrow_cannot_block_the_close() {
+    let (mut env, key) = market();
+    env.ensure_claim_atas(key);
+    env.trade(key, 0, true, USDC, 1).unwrap();
+    env.open_lock(key, 0, OpenArgs::buy(10 * USDC)).unwrap();
+    let claims = read::<Lock>(&env.svm, &env.user_lock(&key, 0)).claims;
+    let owner = env.user.pubkey();
+    let ata = get_associated_token_address(&owner, &child(b"up", &key));
+    let gift = balance(&env.svm, &ata);
+    let ix = anchor_spl::token::spl_token::instruction::transfer(
+        &anchor_spl::token::ID,
+        &ata,
+        &env.escrow_of(&key, 0),
+        &owner,
+        &[],
+        gift,
+    )
+    .unwrap();
+    let user = env.user.insecure_clone();
+    send(&mut env.svm, ix, &user).unwrap();
+    assert_eq!(balance(&env.svm, &env.escrow_of(&key, 0)), claims + gift);
+    env.close_lock(key, 0, 1).unwrap();
+    assert!(env.svm.get_account(&env.escrow_of(&key, 0)).is_none());
+}
+
+#[test]
+fn set_auto_roll_is_owner_only() {
+    let (mut env, key) = market();
+    env.open_lock(key, 0, OpenArgs::buy(USDC)).unwrap();
+    let user = env.user.insecure_clone();
+    env.set_auto_roll(key, 0, &user, true).unwrap();
+    assert!(read::<Lock>(&env.svm, &env.user_lock(&key, 0)).auto_roll);
+    env.set_auto_roll(key, 0, &user, false).unwrap();
+    assert!(!read::<Lock>(&env.svm, &env.user_lock(&key, 0)).auto_roll);
+    let other = env.stranger();
+    assert_err(env.set_auto_roll(key, 0, &other, true), "ConstraintHasOne");
+}
+
+#[test]
+fn locks_refuse_bad_inputs_strangers_and_wrong_accounts() {
+    let (mut env, key) = market();
+    // wrong mint for the side, bad side, slippage, zero amount
+    assert_err(
+        env.open_lock_with(key, 0, child(b"down", &key), OpenArgs::buy(USDC)),
+        "WrongMint",
+    );
+    assert_err(
+        env.open_lock_with(key, 2, child(b"up", &key), OpenArgs::buy(USDC)),
+        "InvalidSide",
+    );
+    let mut greedy = OpenArgs::buy(10 * USDC);
+    greedy.min = 100 * USDC;
+    assert_err(env.open_lock(key, 0, greedy), "SlippageExceeded");
+    assert_err(env.open_lock(key, 0, OpenArgs::buy(0)), "MathInvalidInput");
+    // an unseeded series
+    env.create_series(1, 0).unwrap();
+    let weekly = series_pda(1, 0);
+    assert_err(env.open_lock(weekly, 0, OpenArgs::buy(USDC)), "NotSeeded");
+
+    env.open_lock(key, 0, OpenArgs::buy(10 * USDC)).unwrap();
+    let user = env.user.insecure_clone();
+    let me = user.pubkey();
+    // a stranger cannot close it, the rent goes only to the payer, the
+    // series accounts must be the lock's
+    let other = env.stranger();
+    assert_err(
+        env.close_lock_with(key, key, 0, &other, me, 1),
+        "ConstraintHasOne",
+    );
+    let wrong_payer = other.pubkey();
+    assert_err(
+        env.close_lock_with(key, key, 0, &user, wrong_payer, 1),
+        "ConstraintHasOne",
+    );
+    assert_err(
+        env.close_lock_with(key, weekly, 0, &user, me, 1),
+        "WrongLockSeries",
+    );
+    assert_err(env.close_lock(key, 0, 100 * USDC), "SlippageExceeded");
+    // after close_ts a new lock cannot be opened
+    let s: Series = read(&env.svm, &key);
+    env.set_time(s.close_ts);
+    assert_err(env.open_lock(key, 0, OpenArgs::buy(USDC)), "TradingClosed");
+}
