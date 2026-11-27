@@ -80,6 +80,14 @@ pub enum ClampError {
     LockWaitsForSettlement,
     #[msg("The lock belongs to another series")]
     WrongLockSeries,
+    #[msg("Auto-roll is off for this lock")]
+    AutoRollOff,
+    #[msg("The new series is not the current series of the same class and kind")]
+    NotCurrentSeries,
+    #[msg("Nothing to roll: the claims are worth 0 or the lock has 0 hours")]
+    NothingToRoll,
+    #[msg("The pool price is too far above the fair value to roll now")]
+    RollPriceTooHigh,
 }
 
 impl From<MathError> for ClampError {

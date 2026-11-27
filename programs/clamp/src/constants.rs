@@ -49,3 +49,6 @@ pub const SIDE_UP: u8 = 0;
 pub const SIDE_DOWN: u8 = 1;
 pub const LOCK_SEED: &[u8] = b"lock";
 pub const ESCROW_SEED: &[u8] = b"escrow";
+/// `roll_lock` refuses to pay more per claim than the fair value plus this
+/// (micro-USDC per claim, D-063).
+pub const ROLL_MAX_PREMIUM_PPM: u64 = 50_000;

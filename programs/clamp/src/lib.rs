@@ -152,4 +152,9 @@ pub mod clamp {
     pub fn set_auto_roll(ctx: Context<SetAutoRoll>, on: bool) -> Result<()> {
         instructions::lock_flow::handle_set_auto_roll(ctx, on)
     }
+
+    /// Rolls a settled lock with auto-roll into the current series of its class and kind. Anyone.
+    pub fn roll_lock(ctx: Context<RollLock>) -> Result<()> {
+        instructions::lock_flow::handle_roll_lock(ctx)
+    }
 }

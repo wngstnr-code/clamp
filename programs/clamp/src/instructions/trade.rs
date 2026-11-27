@@ -137,7 +137,7 @@ pub(crate) fn pay_from_series<'info>(
 }
 
 /// Fair value now; re-centers the pool once per index update (spec 8.2).
-fn value_and_recenter(t: &mut SeriesTokens, now: i64) -> Result<u64> {
+pub(crate) fn value_and_recenter(t: &mut SeriesTokens, now: i64) -> Result<u64> {
     let v = fair_value_ppm(&t.series, &t.index_state, now)?;
     let index_ts = t.index_state.last_ts;
     if index_ts > t.series.last_recenter_ts {
@@ -273,7 +273,11 @@ pub struct TradeAccounts<'info> {
 }
 
 /// Checks the side and the user's claim account; returns (pool_s, pool_o).
-fn side_pools(t: &SeriesTokens, user_claims: &TokenAccount, side: u8) -> Result<(u64, u64)> {
+pub(crate) fn side_pools(
+    t: &SeriesTokens,
+    user_claims: &TokenAccount,
+    side: u8,
+) -> Result<(u64, u64)> {
     let s = &t.series;
     let (mint, pools) = match side {
         SIDE_UP => (s.up_mint, (s.pool_up, s.pool_down)),
@@ -322,15 +326,19 @@ pub struct FeeTargets<'info> {
     pub treasury: AccountInfo<'info>,
 }
 
-/// Buys claims of `side` with `usdc_in` (spec 8.3). `payer` signs and owns
-/// `payer_collateral`; the claims go to `claims_to`, which must hold the
-/// side's mint. Returns the claims bought. Used by `buy` and `open_lock`.
+/// Buys claims of `side` with `usdc_in` (spec 8.3). `payer` is the authority
+/// of `payer_collateral`; `payer_seeds` signs for it when it is a PDA (empty
+/// for a wallet). The claims go to `claims_to`, which must hold the side's
+/// mint. `user` is the owner named in the event. Returns the claims bought.
+/// Used by `buy`, `open_lock` and `roll_lock`.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn execute_buy<'info>(
     t: &mut SeriesTokens<'info>,
     fees: FeeTargets<'info>,
+    user: Pubkey,
     payer: AccountInfo<'info>,
     payer_collateral: AccountInfo<'info>,
+    payer_seeds: &[&[&[u8]]],
     claims_to: &InterfaceAccount<'info, TokenAccount>,
     tp: Pubkey,
     side: u8,
@@ -364,7 +372,8 @@ pub(crate) fn execute_buy<'info>(
                     to,
                     authority: payer.clone(),
                 },
-            ),
+            )
+            .with_signer(payer_seeds),
             amount,
             decimals,
         )?;
@@ -396,7 +405,7 @@ pub(crate) fn execute_buy<'info>(
         .ok_or(ClampError::MathOverflow)?;
     emit!(Trade {
         series: series.key(),
-        user: payer.key(),
+        user,
         side,
         is_buy: true,
         usdc: usdc_in,
@@ -490,8 +499,10 @@ pub fn handle_buy(ctx: Context<TradeAccounts>, side: u8, usdc_in: u64, min_out: 
     execute_buy(
         &mut a.tokens,
         fees,
+        a.user.key(),
         a.user.to_account_info(),
         a.user_collateral.to_account_info(),
+        &[],
         &a.user_claims,
         tp,
         side,

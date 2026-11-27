@@ -1,4 +1,4 @@
-//! Bill Lock and Revenue Lock: open, close, withdraw, auto-roll switch (spec 10.4).
+//! Bill Lock and Revenue Lock: open, close, withdraw, auto-roll, roll (spec 10.4).
 //!
 //! A lock is a pool buy whose claims stay in an escrow token account owned by
 //! the lock PDA. Buys and sells go through the same code as `buy` and `sell`.
@@ -12,13 +12,16 @@ use anchor_spl::{
     },
 };
 
-use crate::constants::{CONFIG_SEED, ESCROW_SEED, LOCK_SEED, SIDE_DOWN, SIDE_UP};
+use crate::constants::{
+    CLASS_SEED, CONFIG_SEED, ESCROW_SEED, LOCK_SEED, ROLL_MAX_PREMIUM_PPM, SIDE_DOWN, SIDE_UP,
+};
 use crate::errors::ClampError;
-use crate::events::{LockAutoRollSet, LockClosed, LockOpened, Redeemed};
+use crate::events::{LockAutoRollSet, LockClosed, LockOpened, LockRolled, Redeemed};
 use crate::instructions::trade::*;
 use crate::instructions::vault_flow::VAULT_SEED;
+use crate::math::pool::cost_exact_out;
 use crate::math::PPM;
-use crate::state::{Config, Lock, Vault};
+use crate::state::{ClassConfig, Config, Lock, Vault};
 
 /// `LockClosed.how` values.
 pub const CLOSED_SOLD: u8 = 0;
@@ -131,8 +134,10 @@ pub fn handle_open_lock(
     let claims = execute_buy(
         &mut a.tokens,
         fees,
+        a.owner.key(),
         a.owner.to_account_info(),
         a.owner_collateral.to_account_info(),
+        &[],
         &a.escrow,
         tp,
         side,
@@ -263,6 +268,8 @@ pub fn handle_close_lock(ctx: Context<CloseLock>, min_usdc_out: u64) -> Result<(
             payout,
         });
         (payout, CLOSED_REDEEMED)
+    } else if now < a.tokens.series.close_ts && amount == 0 {
+        (0, CLOSED_SOLD)
     } else if now < a.tokens.series.close_ts {
         let fees = FeeTargets {
             idle: a.idle.to_account_info(),
@@ -394,6 +401,236 @@ pub fn handle_set_auto_roll(ctx: Context<SetAutoRoll>, on: bool) -> Result<()> {
         lock: lock.key(),
         owner: lock.owner,
         on,
+    });
+    Ok(())
+}
+
+// ---------------------------------------------------------------- roll
+
+/// Anyone, after settlement, when auto-roll is on (spec 10.4, D-063). The
+/// caller pays the rent of a new lock and gets it back when that lock closes.
+#[derive(Accounts)]
+pub struct RollLock<'info> {
+    #[account(mut)]
+    pub caller: Signer<'info>,
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = treasury @ ClampError::WrongTokenAccount)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(seeds = [VAULT_SEED], bump = vault.bump, has_one = idle @ ClampError::WrongTokenAccount)]
+    pub vault: Box<Account<'info, Vault>>,
+    #[account(mut)]
+    pub idle: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(mut)]
+    pub treasury: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// The settled series of the lock.
+    pub old_tokens: SeriesTokens<'info>,
+    /// The current series of the same class and kind.
+    pub new_tokens: SeriesTokens<'info>,
+    #[account(seeds = [CLASS_SEED, &[new_tokens.series.class_id]], bump = class_config.bump)]
+    pub class_config: Box<Account<'info, ClassConfig>>,
+    #[account(
+        mut,
+        close = old_rent_payer,
+        constraint = old_lock.series == old_tokens.series.key() @ ClampError::WrongLockSeries,
+    )]
+    pub old_lock: Box<Account<'info, Lock>>,
+    #[account(mut, address = old_lock.escrow @ ClampError::WrongTokenAccount)]
+    pub old_escrow: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// CHECK: receives the rent of the old lock and escrow; must be `old_lock.rent_payer`.
+    #[account(mut, address = old_lock.rent_payer)]
+    pub old_rent_payer: UncheckedAccount<'info>,
+    #[account(
+        init_if_needed,
+        payer = caller,
+        space = 8 + Lock::INIT_SPACE,
+        seeds = [LOCK_SEED, old_lock.owner.as_ref(), new_tokens.series.key().as_ref(), &[old_lock.side]],
+        bump,
+    )]
+    pub new_lock: Box<Account<'info, Lock>>,
+    /// The mint of the lock's side in the new series (checked in the handler).
+    pub new_claim_mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(
+        init_if_needed,
+        payer = caller,
+        seeds = [ESCROW_SEED, new_lock.key().as_ref()],
+        bump,
+        token::mint = new_claim_mint,
+        token::authority = new_lock,
+        token::token_program = token_program,
+    )]
+    pub new_escrow: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// The owner's collateral account: receives what the new buy does not spend.
+    #[account(mut, token::authority = old_lock.owner, token::token_program = token_program)]
+    pub owner_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub token_program: Interface<'info, TokenInterface>,
+    pub system_program: Program<'info, System>,
+}
+
+pub fn handle_roll_lock(ctx: Context<RollLock>) -> Result<()> {
+    let now = Clock::get()?.unix_timestamp;
+    let bump = ctx.bumps.new_lock;
+    let a = ctx.accounts;
+    let tp = a.token_program.key();
+    let old = &a.old_lock;
+    let (owner, side, hours) = (old.owner, old.side, old.hours);
+    require!(old.auto_roll, ClampError::AutoRollOff);
+    let old_s = &a.old_tokens.series;
+    let new_s = &a.new_tokens.series;
+    require!(old_s.settled, ClampError::NotSettled);
+    require!(
+        new_s.key() != old_s.key()
+            && new_s.class_id == old_s.class_id
+            && new_s.kind == old_s.kind
+            && a.class_config.current_series[usize::from(new_s.kind)] == new_s.key(),
+        ClampError::NotCurrentSeries
+    );
+    let expected_mint = if side == SIDE_UP {
+        new_s.up_mint
+    } else {
+        new_s.down_mint
+    };
+    require_keys_eq!(a.new_claim_mint.key(), expected_mint, ClampError::WrongMint);
+
+    // 1. Redeem the old claims (spec 11).
+    let amount = a.old_escrow.amount;
+    let value = if side == SIDE_UP {
+        u64::from(old_s.up_value)
+    } else {
+        PPM - u64::from(old_s.up_value)
+    };
+    let payout = u64::try_from(u128::from(amount) * u128::from(value) / u128::from(PPM))
+        .map_err(|_| ClampError::MathOverflow)?;
+    let width = new_s
+        .upper
+        .checked_sub(new_s.lower)
+        .ok_or(ClampError::InvalidBand)?;
+    let target = u64::from(hours)
+        .checked_mul(width)
+        .ok_or(ClampError::MathOverflow)?;
+    require!(payout > 0 && target > 0, ClampError::NothingToRoll);
+    let old_series_key = old_s.key();
+    if amount > 0 {
+        let (_, mint) = side_tokens(&a.old_tokens, side);
+        a.old_lock.with_signer(|signer| {
+            burn(
+                CpiContext::new_with_signer(
+                    tp,
+                    Burn {
+                        mint: mint.to_account_info(),
+                        from: a.old_escrow.to_account_info(),
+                        authority: a.old_lock.to_account_info(),
+                    },
+                    signer,
+                ),
+                amount,
+            )
+        })?;
+    }
+    emit!(Redeemed {
+        series: old_series_key,
+        user: owner,
+        side,
+        amount,
+        payout,
+    });
+
+    // 2. Buy hours * W_new claims in the new series, spending at most the
+    //    payout, paid straight from the old series' collateral.
+    let v = value_and_recenter(&mut a.new_tokens, now)?;
+    let (pool_s, pool_o) = side_pools(&a.new_tokens, &a.new_escrow, side)?;
+    let cost = cost_exact_out(pool_s, pool_o, target, a.new_tokens.series.trade_fee_bps)
+        .unwrap_or(u64::MAX);
+    let usdc_in = cost.min(payout);
+    let fees = FeeTargets {
+        idle: a.idle.to_account_info(),
+        treasury: a.treasury.to_account_info(),
+    };
+    let payer = a.old_tokens.series.to_account_info();
+    let payer_collateral = a.old_tokens.collateral.to_account_info();
+    let old_series = &a.old_tokens.series;
+    let new_tokens = &mut a.new_tokens;
+    let new_escrow = &a.new_escrow;
+    let new_claims = old_series.with_signer(|signer| {
+        execute_buy(
+            new_tokens,
+            fees,
+            owner,
+            payer,
+            payer_collateral,
+            signer,
+            new_escrow,
+            tp,
+            side,
+            usdc_in,
+            1,
+            now,
+        )
+    })?;
+    // the average price per claim stays within the premium over fair value
+    let fair = if side == SIDE_UP { v } else { PPM - v };
+    require!(
+        u128::from(usdc_in) * u128::from(PPM)
+            <= u128::from(new_claims) * u128::from(fair + ROLL_MAX_PREMIUM_PPM),
+        ClampError::RollPriceTooHigh
+    );
+
+    // 3. What the buy did not spend goes to the owner.
+    let leftover = payout - usdc_in;
+    pay_from_series(
+        &a.old_tokens,
+        tp,
+        a.owner_collateral.to_account_info(),
+        leftover,
+    )?;
+
+    // 4. Close the old lock (Anchor closes the lock account itself).
+    close_escrow(
+        &a.old_lock,
+        &a.old_escrow,
+        a.old_rent_payer.to_account_info(),
+        tp,
+    )?;
+
+    let new_series_key = a.new_tokens.series.key();
+    let escrow_key = a.new_escrow.key();
+    let caller = a.caller.key();
+    let ref_rate = a.old_lock.ref_rate;
+    let lock = &mut a.new_lock;
+    if lock.owner == Pubkey::default() {
+        lock.owner = owner;
+        lock.series = new_series_key;
+        lock.side = side;
+        lock.rent_payer = caller;
+        lock.created_ts = now;
+        lock.escrow = escrow_key;
+        lock.bump = bump;
+        lock.ref_rate = ref_rate;
+    }
+    lock.claims = lock
+        .claims
+        .checked_add(new_claims)
+        .ok_or(ClampError::MathOverflow)?;
+    lock.paid = lock
+        .paid
+        .checked_add(usdc_in)
+        .ok_or(ClampError::MathOverflow)?;
+    lock.hours = lock
+        .hours
+        .checked_add(hours)
+        .ok_or(ClampError::MathOverflow)?;
+    lock.auto_roll = true;
+    emit!(LockRolled {
+        old_lock: a.old_lock.key(),
+        new_lock: lock.key(),
+        owner,
+        old_series: old_series_key,
+        new_series: new_series_key,
+        side,
+        old_claims: amount,
+        payout,
+        usdc_in,
+        new_claims,
+        leftover,
+        caller,
     });
     Ok(())
 }

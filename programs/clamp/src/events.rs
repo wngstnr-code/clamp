@@ -188,3 +188,21 @@ pub struct LockAutoRollSet {
     pub owner: Pubkey,
     pub on: bool,
 }
+
+/// `roll_lock` redeemed `old_claims` for `payout`, spent `usdc_in` on
+/// `new_claims` in the new series and paid `leftover` to the owner.
+#[event]
+pub struct LockRolled {
+    pub old_lock: Pubkey,
+    pub new_lock: Pubkey,
+    pub owner: Pubkey,
+    pub old_series: Pubkey,
+    pub new_series: Pubkey,
+    pub side: u8,
+    pub old_claims: u64,
+    pub payout: u64,
+    pub usdc_in: u64,
+    pub new_claims: u64,
+    pub leftover: u64,
+    pub caller: Pubkey,
+}
