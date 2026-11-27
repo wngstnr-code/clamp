@@ -24,10 +24,11 @@ Update this file at the end of every session and after every milestone. Newest e
 
 ### Wangsit (programs and backend)
 
-1. ~~Install the Solana CLI and Anchor~~ (done 2026-11-18: Agave 4.4.1, Anchor 1.2.2, solana-verify 0.5.2).
-2. ~~`git init`, workspaces, `.gitignore`, `.env.example`~~ (done 2026-11-18, pushed to the private repo). Step 3 done: empty `clamp` and `test-usdc` programs, `Anchor.toml`, Cargo workspace. Step 4 done: deployer, worker and two test users in `~/.config/solana/clamp/` (addresses in `build-and-deploy.md` section 2). Next: the user funds deployer and worker, then the verifiable build spike (step 5, Docker must run).
-3. ~~Try a verifiable build once with an empty program and check it against devnet~~ (done 2026-11-18, hashes match). Step 6 done: Supabase project `clamp` (Singapore) linked, first migration applied, access checked. The user filled `.env` (Supabase URL, anon key, service role key), checked: anon read 200, anon write 401, service read 200.
-4. ~~M1 stage 1: `math/median.rs` and `math/twap.rs`~~ (done 2026-11-18, 25 unit tests). ~~M1 stage 2: index accounts and instructions~~ (done 2026-11-18, 14 LiteSVM tests). ~~M1 stage 3: SDK and source rules~~ (done 2026-11-18). M1 stage 4 code done (2026-11-18): `backend/` with report and record steps, dry run on live data works. M1 stage 5 done (2026-11-18): the M1 program is on devnet (verifiable, hashes match), setup done, first updates sent from a laptop and verified. **The index runs on its own since 2026-11-18 11:00 UTC**: pg_cron calls `https://clamp-backend.vercel.app/cron/tick` every 15 minutes (reporter 1, quorum 1). M1 stage 6 in progress: shared signed archive (`POST /archive`) live, standalone reporter bundle works (reporter 2 tested from a laptop, verified), reporters 2 and 3 registered with quorum 1. Reporter 2 (GitHub Actions, public repo `wngstnr-code/clamp-reporter`) ran by hand from Actions; reporter 3 (Netlify) ran on its 11:40 UTC schedule and its report matched every raw file (`pnpm verify`). GitHub's schedule trigger never fired for reporter 2 (3 hours), so pg_cron now starts it through `workflow_dispatch` (first scheduled run 14:50 UTC, HTTP 204, report on-chain). All three reporters run on schedule; **quorum 2 since 15:15 UTC**. M1 done. M2 stage 1 (faucet) done: deployed, mint authority moved to the faucet, a devnet claim works. M2 stage 2 (pool and vault math) done. M2 stage 3 (series and claims) done in code and tests, not deployed yet. Deployed; the first daily and weekly RTX 4090 series are scheduled for 16:46 UTC (history reaches 6 h then). M2 stage 4 (vault and pool on-chain) done in code and tests, not deployed yet. Stage 4 deployed, vault live with 2,000 tUSDC. M2 stage 5 (crank and mirror in the tick) done and deployed to Vercel: the first tick after the index reaches 6 h of history (16:45 UTC) should create and seed the daily and weekly RTX 4090 series on its own. **Done on its own at the 16:30 UTC tick** (history reached 6 h a little earlier than planned): daily `9m7i36dV81UfUG9Th5GYUjnZu9Y8rYaPUQUh48kiBF3c` (band $0.3272 to$0.4000, expiry 2026-11-19 16:30 UTC) and weekly `4KoSFdvghqjnqE8oGLbcPKbRfrDjzfJt62J9fnDEgMjt` (band $0.3091 to$0.4181), both seeded by the vault. A devnet buy (10 tUSDC for 19.33 UP) and sell (5 UP) with test-user-1 worked. Next: the daily series settles through the crank after 2026-11-19 16:30 UTC, then redeem (M2 done-when).
+Updated 2026-11-27 late. Code of M3 to M6 is done, deployed and pushed; M0 to M2 were built before the hackathon (history in the session log).
+
+1. Real tests, in one batch (Wangsit's choice: code first): the Vast.ai bill with a read-only key (A6), then a lock sized from it opened and closed on devnet (M3 done-when); a Runpod read-only key (A8); Vast.ai host earnings if a host key is found (A18), else the owner types the hours; one auto-roll lock rolled by the tick on devnet (M6 done-when).
+2. M7: README (written last, with the before and during sections), verify from a clean clone, final deep review.
+3. Open decision for the team: D-063 (`roll_lock` rules), proposed.
 
 ### AG (web app)
 
@@ -116,6 +117,24 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 
 ## Review notes
 
+### Deep review of M3 to M6 (2026-11-27, during the hackathon)
+
+Full suite: 111 Rust tests, 120 SDK tests, 47 backend tests, fmt and clippy clean. Spec 10 and 11 checked rule by rule against `lock_flow.rs`, `settle.rs` and the SDK: they match, after the fixes below. Code review (high) of `135047c..HEAD` for programs, SDK and backend, plus 5 minutes as an attacker.
+
+| Finding | Severity | Fix |
+|---|---|---|
+| `roll_lock` switched auto-roll back on for an existing lock the owner had turned off | medium | It keeps that lock's flag; test. Needs the next deploy |
+| Dust auto-roll locks could drain the worker's SOL (about 0.0044 SOL of rent per roll, back only when the owner closes) | medium | The crank rolls payouts of at least 1 tUSDC and stops under 0.5 SOL (D-063) |
+| Locks that keep failing could take all 10 roll slots of every tick | medium | Cheap checks before the cap, oldest lock first, at most 20 attempts and 10 rolls per tick |
+| An RPC error in the roll step dropped the crank log and failed the tick | medium | The roll step has its own try/catch, earlier results are logged first |
+| Nosana paging could count a job twice | medium | Jobs are counted once by address |
+| Failed Nosana jobs were counted as earnings | low | Left out, reported as `failedJobs` and `failedHours` (payout rule not checked) |
+| `lockSizeFromBill` could store 0 hours, so a small lock never rolled | low | At least 1 hour when there is a lock |
+| CLI `lock-close` failed for a rolled lock (rent payer), `lock-open` stored the rest hours | low | Fixed |
+| Any bug in the proxy answered 504 `provider_unreachable` | low | Network errors 504, bugs 500 `internal_error` |
+| Someone can push the pool up to just under the roll price cap, let the crank roll, and sell back | low | Bounded by `ROLL_MAX_PREMIUM` (0.05 USDC per claim) minus two 1% fees: known issue |
+
+
 ### Code review of M4 and M5 (2026-11-27, high level)
 
 | Finding | Severity | Fix |
@@ -201,6 +220,8 @@ Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, 
 | The legal status is not resolved                                                                                                                                                           | medium   | Devnet and test tokens only                                                                                                                                                                                                                                |
 | The provider key passes through our proxy                                                                                                                                                  | low      | Read-only scope, never stored, invoice file as the other way                                                                                                                                                                                               |
 | The name is shared with another crypto product                                                                                                                                             | low      | D-037                                                                                                                                                                                                                                                      |
+| A trader can push the new series' pool up to just under the `roll_lock` price cap before a roll and sell back after | low | The owner overpays at most `ROLL_MAX_PREMIUM` (0.05 USDC) per claim; the trader pays two 1% fees. Deep review M3 to M6 |
+| Anyone can call the bill and earnings proxy with their own key, so heavy use could hit the providers' rate limits for our server | low | Stateless, no key stored; the invoice file path works without the proxy |
 | The reporter 2 dispatch token expires on 2027-02-16                                                                                                                                        | low      | Renew it in Vault (`build-and-deploy.md`, reporters table)                                                                                                                                                                                                 |
 | The raw archive is controlled by the team: files cannot be changed without breaking their on-chain hash, but they can be deleted                                                           | low      | Stated in the README. Anyone can mirror the bucket.                                                                                                                                                                                                        |
 | Program upgrade and admin keys are a hot keypair on Wangsit's laptop                                                                                                                       | low      | Devnet only. Stated in the README.                                                                                                                                                                                                                         |
@@ -245,6 +266,7 @@ Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it
 - SDK: `verifySettlement` (5 tests): run against devnet, **14 of 14 settled series match**, the start snapshots too. `getNosanaEarnings` (4 tests), read live on a public node (94 finished jobs in 7 days, an RTX 3090 node, so unassigned). The Nosana API changed since 2026-11-17: `state` is now `COMPLETED`, pages are at most 50, and browsers may call it. `lockSizeFromBill`: the size straight from a bill, so a small bill in a daily series is no longer rounded to 0 hours. The earnings class field is `rate` with `hoursSource` (replaces `listedRate`). README for the SDK, its example run against devnet. 118 SDK tests.
 - Deployed the same night: verifiable build of `7c8915c`, hash `24dcd469...97ff` matches on devnet. Then the backend push turns the roll step on.
 - Next: the real tests in one batch (Vast.ai bill A6, Runpod A8, host earnings A18, a lock rolled on devnet by the tick), then M7.
+- Deep review of M3 to M6 the same night: findings and fixes in "Review notes". The `roll_lock` fix needs one more deploy.
 
 
 ### 2026-11-27, M5 Wangsit part: host earnings reader (Wangsit, during the hackathon)
