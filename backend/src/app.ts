@@ -1,11 +1,13 @@
-// HTTP routes (docs/architecture.md section 5). The bill proxy routes arrive in M3.
+// HTTP routes (docs/architecture.md section 5).
 
 import { timingSafeEqual } from "node:crypto";
 
 import { CLASSES, classPda, clampProgram, sha256Hex } from "@clamp/sdk";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 
+import { BillError, billWindow, providerKey, runpodBill, vastBill, type Fetch } from "./bill-proxy.js";
 import { ARCHIVE_MAX_AGE_SECS, ARCHIVE_MAX_BYTES, verifyArchive } from "./archive-auth.js";
 import { loadEnv } from "./env.js";
 import { Store } from "./store.js";
@@ -49,6 +51,33 @@ async function registeredReporters(connection: Connection): Promise<Set<string>>
 }
 
 export const app = new Hono();
+
+/**
+ * Bill proxy (M3). Any origin may call it: it holds no session and no secret
+ * of ours, and it only works with the caller's own provider key. The key and
+ * the answer are never logged or stored.
+ */
+app.use("/bill/*", cors({ origin: "*", allowMethods: ["POST"], allowHeaders: ["Content-Type", "X-Provider-Key"], maxAge: 600 }));
+for (const [provider, read] of [
+  ["vast", vastBill],
+  ["runpod", runpodBill],
+] as const) {
+  app.post(`/bill/${provider}`, async (c) => {
+    c.header("Cache-Control", "no-store");
+    try {
+      const key = providerKey(c.req.header("x-provider-key"));
+      const body = await c.req.json().catch(() => ({}));
+      const { from, to } = billWindow(body, Math.floor(Date.now() / 1000));
+      return c.json(await read(fetch as Fetch, key, from, to));
+    } catch (e) {
+      if (e instanceof BillError) {
+        return c.json({ error: e.code, providerStatus: e.providerStatus ?? null }, e.status as 400 | 502);
+      }
+      // a timeout or a network error: say so without echoing anything of the request
+      return c.json({ error: "provider_unreachable" }, 504);
+    }
+  });
+}
 
 /**
  * Shared raw archive (D-054). The file is stored under the SHA-256 of the
