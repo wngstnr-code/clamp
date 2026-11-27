@@ -123,7 +123,7 @@ Full suite: 111 Rust tests, 120 SDK tests, 47 backend tests, fmt and clippy clea
 
 | Finding | Severity | Fix |
 |---|---|---|
-| `roll_lock` switched auto-roll back on for an existing lock the owner had turned off | medium | It keeps that lock's flag; test. Needs the next deploy |
+| `roll_lock` switched auto-roll back on for an existing lock the owner had turned off | medium | It keeps that lock's flag; test. Deployed (hash `6e926b1c...`) |
 | Dust auto-roll locks could drain the worker's SOL (about 0.0044 SOL of rent per roll, back only when the owner closes) | medium | The crank rolls payouts of at least 1 tUSDC and stops under 0.5 SOL (D-063) |
 | Locks that keep failing could take all 10 roll slots of every tick | medium | Cheap checks before the cap, oldest lock first, at most 20 attempts and 10 rolls per tick |
 | An RPC error in the roll step dropped the crank log and failed the tick | medium | The roll step has its own try/catch, earlier results are logged first |
@@ -234,7 +234,8 @@ Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, 
 
 | Thing                                                                                                                                                                                                                                    | Address                                                                                                                                                                                                                                                                                                                                                                                                    | Date       |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| Program `clamp` (M6: adds `roll_lock`; verifiable build of commit `7c8915c` (program source as of `f3637f6`), hash `24dcd469be0d98fcd3e279465ad49e133393c928ced0638bbeb21780d72b97ff`, 868 KB, deployed 2026-11-27, tx `3LT1HbZo...`, `get-program-hash` matches, upgrade authority = deployer) | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` |
+| Program `clamp` (deep review fix of `roll_lock`; verifiable build of commit `858bc57` (program source as of `1a16536`), hash `6e926b1c9137cda843318d967a68bd19fb5119c36f961c1d1af9410ef42e0d1f`, deployed 2026-11-27, tx `5XcAqZuZ...`, `get-program-hash` matches, upgrade authority = deployer) | `wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC` |
+| Earlier `clamp` build (M6, commit `7c8915c`, hash `24dcd469...`) | same address, replaced |
 | Earlier `clamp` build (M3 stage 1, commit `9308740`, hash `60cd6e61...`) | same address, replaced |
 | Earlier `clamp` build (M2 stage 4, commit `6773a9a`, hash `a6caee73...`) | same address, replaced |
 | Earlier `clamp` build (M2 stage 3, commit `368e918`, hash `b5ead3d9...`)                                                                                                                                                                 | same address, replaced                                                                                                                                                                                                                                                                                                                                                                                     | 2026-11-18 |
@@ -266,7 +267,7 @@ Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it
 - SDK: `verifySettlement` (5 tests): run against devnet, **14 of 14 settled series match**, the start snapshots too. `getNosanaEarnings` (4 tests), read live on a public node (94 finished jobs in 7 days, an RTX 3090 node, so unassigned). The Nosana API changed since 2026-11-17: `state` is now `COMPLETED`, pages are at most 50, and browsers may call it. `lockSizeFromBill`: the size straight from a bill, so a small bill in a daily series is no longer rounded to 0 hours. The earnings class field is `rate` with `hoursSource` (replaces `listedRate`). README for the SDK, its example run against devnet. 118 SDK tests.
 - Deployed the same night: verifiable build of `7c8915c`, hash `24dcd469...97ff` matches on devnet. Then the backend push turns the roll step on.
 - Next: the real tests in one batch (Vast.ai bill A6, Runpod A8, host earnings A18, a lock rolled on devnet by the tick), then M7.
-- Deep review of M3 to M6 the same night: findings and fixes in "Review notes". The `roll_lock` fix needs one more deploy.
+- Deep review of M3 to M6 the same night: findings and fixes in "Review notes". The `roll_lock` fix is deployed (hash `6e926b1c...`).
 
 
 ### 2026-11-27, M5 Wangsit part: host earnings reader (Wangsit, during the hackathon)
