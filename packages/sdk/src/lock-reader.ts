@@ -88,7 +88,8 @@ export async function getLocks(connection: Connection, owner: PublicKey): Promis
 
 /**
  * GPU-hours expected in the rest of the series, from the hours of a bill
- * window (default the last 30 days) at the same pace. Rounded down.
+ * window (default the last 30 days) at the same pace. Rounded down. Pass
+ * the summary's `windowSecs` for a bill or an earnings summary.
  */
 export function hoursForRest(billHours: number, s: SeriesView, now: number, windowSecs = BILL_WINDOW_SECS): number {
   if (!(billHours >= 0) || windowSecs <= 0) throw new Error("invalid input");

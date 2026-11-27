@@ -123,18 +123,29 @@ describe("Runpod bill", () => {
 describe("bill files (parsed in the browser)", () => {
   it("reads a saved proxy answer the same as the API", () => {
     expect(parseBillFile(JSON.stringify(vastAnswer))).toEqual(parseVastBill(vastAnswer));
+    expect(parseVastBill(vastAnswer).windowSecs).toBe(30 * 86_400);
   });
-  it("reads raw Vast.ai charges, as an object or an array, all unassigned", () => {
+  it("reads raw Vast.ai charges with the window the user gives, all unassigned", () => {
     const raw = { success: true, results: vastAnswer.charges, next_token: null };
-    const b = parseBillFile(JSON.stringify(raw), FROM, TO);
+    const b = parseBillFile(JSON.stringify(raw), { from: FROM, to: FROM + 7 * 86_400 });
     expect(b.provider).toBe("vast");
+    expect(b.windowSecs).toBe(7 * 86_400);
     expect(b.unassigned).toHaveLength(4);
-    expect(parseBillFile(JSON.stringify(vastAnswer.charges)).lines).toHaveLength(4);
+    expect(parseBillFile(JSON.stringify(vastAnswer.charges), { from: FROM, to: TO }).lines).toHaveLength(4);
+  });
+  it("refuses a raw file without its window", () => {
+    const raw = JSON.stringify({ results: vastAnswer.charges });
+    expect(() => parseBillFile(raw)).toThrow(/window/);
+    expect(() => parseBillFile(raw, { from: TO, to: FROM })).toThrow(/window/);
   });
   it("reads raw Runpod pod billing and refuses anything else", () => {
-    const b = parseBillFile(JSON.stringify({ records: [{ podId: "x", gpuAmount: 1, totalAmount: 1 }], metadata: {} }));
+    const b = parseBillFile(JSON.stringify({ records: [{ podId: "x", gpuAmount: 1, totalAmount: 1 }], metadata: {} }), { from: FROM, to: TO });
     expect(b.provider).toBe("runpod");
-    expect(() => parseBillFile(JSON.stringify({ hello: 1 }))).toThrow();
+    expect(() => parseBillFile(JSON.stringify({ hello: 1 }))).toThrow(/unknown bill file/);
     expect(() => parseBillFile("not json")).toThrow();
+  });
+  it("refuses a saved earnings answer with a clear error", () => {
+    const earnings = { provider: "vast", days: 30, perMachine: [], machines: null };
+    expect(() => parseBillFile(JSON.stringify(earnings))).toThrow(/unknown bill file/);
   });
 });

@@ -48,6 +48,8 @@ export interface BillSummary {
   provider: "vast" | "runpod";
   from: number;
   to: number;
+  /** to - from: the window to pass to `hoursForRest`. */
+  windowSecs: number;
   lines: BillLine[];
   byClass: ClassBill[];
   /** Lines with an unknown GPU, an unknown GPU count or a GPU no index covers. */
@@ -84,6 +86,7 @@ export function summarizeBill(provider: "vast" | "runpod", from: number, to: num
     provider,
     from,
     to,
+    windowSecs: to - from,
     lines,
     byClass,
     unassigned,
@@ -217,15 +220,23 @@ export function parseRunpodBill(answer: RunpodBillAnswer): BillSummary {
  * `GET /api/v0/charges` (for example `vastai show invoices-v1 --charges --raw`,
  * an object with `results` or a plain array) or of Runpod
  * `GET /v2/billing/pods` (an object with `records`). Raw files carry no GPU
- * model, so their lines stay unassigned until the user names the GPU.
+ * model or window: their lines stay unassigned until the user names the GPU,
+ * and the caller passes the window the file covers.
  */
-export function parseBillFile(text: string, from = 0, to = 0): BillSummary {
+export function parseBillFile(text: string, window?: { from: number; to: number }): BillSummary {
   const data = JSON.parse(text) as unknown;
-  const obj = (data ?? {}) as { provider?: unknown; results?: unknown; records?: unknown };
-  if (obj.provider === "vast") return parseVastBill(data as VastBillAnswer);
-  if (obj.provider === "runpod") return parseRunpodBill(data as RunpodBillAnswer);
-  if (Array.isArray(data)) return parseVastBill({ provider: "vast", from, to, charges: data, instances: null });
-  if (Array.isArray(obj.results)) return parseVastBill({ provider: "vast", from, to, charges: obj.results, instances: null });
-  if (Array.isArray(obj.records)) return parseRunpodBill({ provider: "runpod", from, to, records: obj.records, pods: null });
+  const obj = (data ?? {}) as { provider?: unknown; charges?: unknown; records?: unknown; results?: unknown };
+  if (obj.provider === "vast" && Array.isArray(obj.charges)) return parseVastBill(data as VastBillAnswer);
+  if (obj.provider === "runpod" && Array.isArray(obj.records)) return parseRunpodBill(data as RunpodBillAnswer);
+  const raw = Array.isArray(data) ? data : Array.isArray(obj.results) ? obj.results : null;
+  if (obj.provider === undefined && (raw || Array.isArray(obj.records))) {
+    // a raw file does not say which days it covers: the user must
+    if (!window || !Number.isInteger(window.from) || !Number.isInteger(window.to) || window.to <= window.from) {
+      throw new Error("a raw bill file needs the window it covers (from and to)");
+    }
+    const { from, to } = window;
+    if (raw) return parseVastBill({ provider: "vast", from, to, charges: raw, instances: null });
+    return parseRunpodBill({ provider: "runpod", from, to, records: obj.records as unknown[], pods: null });
+  }
   throw new Error("unknown bill file: expected Vast.ai charges or Runpod pod billing JSON");
 }
