@@ -167,6 +167,164 @@ export type Clamp = {
       ]
     },
     {
+      "name": "closeLock",
+      "docs": [
+        "Sells (before close) or redeems (after settlement) the lock's claims, pays the owner, closes the lock."
+      ],
+      "discriminator": [
+        58,
+        254,
+        183,
+        130,
+        151,
+        238,
+        95,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "idle",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "tokens",
+          "accounts": [
+            {
+              "name": "series",
+              "writable": true
+            },
+            {
+              "name": "indexState"
+            },
+            {
+              "name": "upMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "upVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateralMint"
+            }
+          ]
+        },
+        {
+          "name": "lock",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "writable": true,
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "ownerCollateral",
+          "docs": [
+            "The owner's collateral account (its mint is checked by every transfer)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": [
+        {
+          "name": "minUsdcOut",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "createSeries",
       "docs": [
         "Creates the next series of a class and kind. Anyone, after the previous one expired."
@@ -1112,6 +1270,201 @@ export type Clamp = {
       ]
     },
     {
+      "name": "openLock",
+      "docs": [
+        "Buys claims of `side` into the owner's lock for this series (spec 10.4)."
+      ],
+      "discriminator": [
+        74,
+        106,
+        38,
+        15,
+        150,
+        234,
+        190,
+        123
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "idle",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "tokens",
+          "accounts": [
+            {
+              "name": "series",
+              "writable": true
+            },
+            {
+              "name": "indexState"
+            },
+            {
+              "name": "upMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downMint",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "upVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "downVault",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateral",
+              "writable": true,
+              "relations": [
+                "series"
+              ]
+            },
+            {
+              "name": "collateralMint"
+            }
+          ]
+        },
+        {
+          "name": "lock",
+          "writable": true
+        },
+        {
+          "name": "claimMint",
+          "docs": [
+            "The mint of the locked side (checked against the series in the handler)."
+          ]
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "lock"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ownerCollateral",
+          "docs": [
+            "The owner's collateral account (its mint is checked by every transfer)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "side",
+          "type": "u8"
+        },
+        {
+          "name": "usdcIn",
+          "type": "u64"
+        },
+        {
+          "name": "minClaimsOut",
+          "type": "u64"
+        },
+        {
+          "name": "hours",
+          "type": "u32"
+        },
+        {
+          "name": "refRate",
+          "type": "u64"
+        },
+        {
+          "name": "autoRoll",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "redeem",
       "docs": [
         "Burns settled claims of one side for their value in collateral."
@@ -1439,6 +1792,41 @@ export type Clamp = {
         {
           "name": "minUsdcOut",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setAutoRoll",
+      "docs": [
+        "Turns auto-roll of a lock on or off. Owner only."
+      ],
+      "discriminator": [
+        220,
+        137,
+        87,
+        8,
+        4,
+        165,
+        62,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "lock",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "on",
+          "type": "bool"
         }
       ]
     },
@@ -1846,6 +2234,122 @@ export type Clamp = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "withdrawLockClaims",
+      "docs": [
+        "Moves the lock's claims to the owner's wallet and closes the lock."
+      ],
+      "discriminator": [
+        206,
+        173,
+        54,
+        1,
+        234,
+        70,
+        46,
+        16
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "lock",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "claimMint"
+        },
+        {
+          "name": "ownerClaims",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "claimMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "rentPayer",
+          "writable": true,
+          "relations": [
+            "lock"
+          ]
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -1886,6 +2390,19 @@ export type Clamp = {
         99,
         126,
         210
+      ]
+    },
+    {
+      "name": "lock",
+      "discriminator": [
+        8,
+        255,
+        36,
+        202,
+        210,
+        22,
+        57,
+        137
       ]
     },
     {
@@ -1940,6 +2457,45 @@ export type Clamp = {
         227,
         38,
         114
+      ]
+    },
+    {
+      "name": "lockAutoRollSet",
+      "discriminator": [
+        223,
+        212,
+        170,
+        235,
+        221,
+        134,
+        111,
+        47
+      ]
+    },
+    {
+      "name": "lockClosed",
+      "discriminator": [
+        163,
+        163,
+        91,
+        3,
+        79,
+        54,
+        172,
+        68
+      ]
+    },
+    {
+      "name": "lockOpened",
+      "discriminator": [
+        0,
+        103,
+        92,
+        78,
+        1,
+        219,
+        97,
+        166
       ]
     },
     {
@@ -2279,6 +2835,16 @@ export type Clamp = {
       "code": 6035,
       "name": "nothingToSweep",
       "msg": "Nothing to sweep"
+    },
+    {
+      "code": 6036,
+      "name": "lockWaitsForSettlement",
+      "msg": "Trading is closed and the series is not settled yet: wait for settlement"
+    },
+    {
+      "code": 6037,
+      "name": "wrongLockSeries",
+      "msg": "The lock belongs to another series"
     }
   ],
   "types": [
@@ -2744,6 +3310,210 @@ export type Clamp = {
           {
             "name": "seriesAllocBps",
             "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "lock",
+      "docs": [
+        "A Bill Lock (UP) or Revenue Lock (DOWN) of one owner in one series",
+        "(spec 10). PDA `[\"lock\", owner, series, side]`. The claims sit in the",
+        "escrow token account `[\"escrow\", lock]`, whose authority is the lock."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "docs": [
+              "0 UP, 1 DOWN."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "claims",
+            "docs": [
+              "Claims bought into the escrow by `open_lock`."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "paid",
+            "docs": [
+              "Collateral paid for them, fees included."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "hours",
+            "docs": [
+              "GPU-hours the owner expects in the period (display, and the size of a roll)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "refRate",
+            "docs": [
+              "The owner's own rate from the bill, micro-USD per GPU-hour (display only)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "autoRoll",
+            "type": "bool"
+          },
+          {
+            "name": "rentPayer",
+            "docs": [
+              "Receives the rent of the lock and the escrow when they close."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "createdTs",
+            "type": "i64"
+          },
+          {
+            "name": "escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "lockAutoRollSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lock",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "on",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "lockClosed",
+      "docs": [
+        "A lock closed. `how`: 0 sold through the pool, 1 redeemed after",
+        "settlement, 2 claims withdrawn to the owner. `usdc_out` is 0 for 2."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lock",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": "u8"
+          },
+          {
+            "name": "claims",
+            "type": "u64"
+          },
+          {
+            "name": "usdcOut",
+            "type": "u64"
+          },
+          {
+            "name": "how",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "lockOpened",
+      "docs": [
+        "`open_lock` bought `claims` for `usdc_in` into the lock (spec 10.4).",
+        "The totals are the lock's after this call."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lock",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "series",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": "u8"
+          },
+          {
+            "name": "usdcIn",
+            "type": "u64"
+          },
+          {
+            "name": "claims",
+            "type": "u64"
+          },
+          {
+            "name": "totalClaims",
+            "type": "u64"
+          },
+          {
+            "name": "totalPaid",
+            "type": "u64"
+          },
+          {
+            "name": "hours",
+            "type": "u32"
+          },
+          {
+            "name": "refRate",
+            "type": "u64"
+          },
+          {
+            "name": "autoRoll",
+            "type": "bool"
           }
         ]
       }
