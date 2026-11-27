@@ -81,9 +81,9 @@ Done when: on devnet a short series has gone from creation to settlement and red
 
 ## M3: Bill Lock (Friday 2026-11-27)
 
-- [ ] W: `open_lock`, `close_lock`, `withdraw_lock_claims`, `set_auto_roll`, tests
-- [ ] W: bill proxy routes for Vast.ai and RunPod, bill parser (hours, cost and rate per class)
-- [ ] W: SDK: `getLocks`, lock sizing helper
+- [x] W: `open_lock`, `close_lock`, `withdraw_lock_claims`, `set_auto_roll`, tests
+- [x] W: bill proxy routes for Vast.ai and RunPod, bill parser (hours, cost and rate per class) (the real key test is open)
+- [x] W: SDK: `getLocks`, lock sizing helper
 - [ ] AG: Bill Lock page: connect by key or invoice file, bill summary, rate next to the index, proposed size, warnings, one-click lock
 - [ ] AG: positions page: locks, outcome table, close
 
@@ -91,7 +91,7 @@ Done when: a real Vast.ai bill is read with a read-only key, and a lock sized fr
 
 ## M4: Vault complete (Saturday 2026-11-28, morning)
 
-- [ ] W: `withdraw`, allocation cap, active series list checks, vault tests (share games, rounding)
+- [x] W: `withdraw`, allocation cap, active series list checks, vault tests (share games, rounding)
 - [ ] AG: vault page: share price, NAV parts, deposit, withdraw, available now
 
 Done when: a second wallet deposits, a series runs and is swept, and both depositors withdraw their correct share.
