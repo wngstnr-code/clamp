@@ -80,6 +80,23 @@ Top places went to crypto inheritance, privacy, commitment tools, parametric ins
 
 So devnet is normal for winners, and earlier work is normal as long as it is disclosed.
 
+The official top 10 (dev3pack thread on X, 11 May 2026, checked again on 2026-11-28; 382 projects, 682 hackers, 84 countries):
+
+| # | Project | Country | What it does |
+|---|---|---|---|
+| 1 | Afterlife | Costa Rica | Decentralized crypto inheritance. Joined the Bridge Accelerator |
+| 2 | Protocol 01 | France, Ireland | Privacy. Solo build, about three months of earlier work (the builder's own post) |
+| 3 | Commit | Ghana | Commitment tool |
+| 4 | Covantic | Ukraine | Parametric insurance for AI agents, claims paid in USDC after an on-chain loss check |
+| 5 | Heirloom | Kenya | Crypto inheritance |
+| 6 | Judge Chain | Indonesia | Judging tool |
+| 7 | APIS | France | GPU rental marketplace |
+| 8 | Mazrat'al Albaan | South Africa | Not checked |
+| 9 | LiiLend | Kenya | Not checked |
+| 10 | Dead Man's Switch | Malaysia | Crypto inheritance |
+
+Top 3 prizes were $3,000, $2,500 and $1,500 (Solana Costa Rica, 14 May 2026). A first place per country got fast-track access to the Bridge Accelerator (a Mexico winner's post, 13 May 2026).
+
 ## 6. Submission checklist
 
 - [ ] Both members applied, accepted, signed up, and in one team in the dashboard
