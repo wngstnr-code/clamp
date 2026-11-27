@@ -8,6 +8,7 @@ export * from "./verify.js";
 export * from "./market-reader.js";
 export * from "./lock-reader.js";
 export * from "./bill.js";
+export * from "./earnings.js";
 export * from "./math/median.js";
 export * from "./math/twap.js";
 export * from "./math/pool.js";
