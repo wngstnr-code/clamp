@@ -1415,3 +1415,201 @@ fn locks_refuse_bad_inputs_strangers_and_wrong_accounts() {
     env.set_time(s.close_ts);
     assert_err(env.open_lock(key, 0, OpenArgs::buy(USDC)), "TradingClosed");
 }
+
+// ---------------------------------------------------------------- vault (M4)
+
+impl Env {
+    /// A new wallet with `amount` tUSDC in its ATA.
+    fn funded(&mut self, amount: u64) -> Keypair {
+        let k = Keypair::new();
+        self.svm.airdrop(&k.pubkey(), 10_000_000_000).unwrap();
+        let ata = get_associated_token_address(&k.pubkey(), &self.mint);
+        put(
+            &mut self.svm,
+            ata,
+            anchor_spl::token::ID,
+            token_data(&self.mint, &k.pubkey(), amount),
+        );
+        k
+    }
+
+    fn usdc_of(&self, who: &Pubkey) -> u64 {
+        balance(&self.svm, &get_associated_token_address(who, &self.mint))
+    }
+
+    fn shares_of(&self, who: &Pubkey) -> u64 {
+        balance(&self.svm, &get_associated_token_address(who, &shares_pda()))
+    }
+
+    /// Moves tUSDC from `who` straight into the vault's idle account.
+    fn donate_to_idle(&mut self, who: &Keypair, amount: u64) {
+        let ix = anchor_spl::token::spl_token::instruction::transfer(
+            &anchor_spl::token::ID,
+            &get_associated_token_address(&who.pubkey(), &self.mint),
+            &idle_pda(),
+            &who.pubkey(),
+            &[],
+            amount,
+        )
+        .unwrap();
+        send(&mut self.svm, ix, who).unwrap();
+    }
+}
+
+/// M4 done-when in LiteSVM: two depositors, a series runs with trades and a
+/// lock, settles, is swept, and both withdraw at the same share price.
+#[test]
+fn two_depositors_share_a_series_and_withdraw_their_share() {
+    let (mut env, key) = market();
+    let lp = env.lp.insecure_clone();
+    let second = env.funded(500 * USDC);
+    // the second deposit comes while the series is live
+    env.deposit(&second, 500 * USDC).unwrap();
+    let lp_shares = env.lp_shares();
+    let second_shares = env.shares_of(&second.pubkey());
+    assert!(second_shares > 499 * USDC && second_shares <= 500 * USDC);
+
+    // trading and a lock pay fees to the vault
+    env.trade(key, 0, true, 20 * USDC, 1).unwrap();
+    env.open_lock(key, 1, OpenArgs::buy(15 * USDC)).unwrap();
+    let up = balance(
+        &env.svm,
+        &get_associated_token_address(&env.user.pubkey(), &child(b"up", &key)),
+    );
+    env.trade(key, 0, false, up / 2, 1).unwrap();
+
+    let s: Series = read(&env.svm, &key);
+    let first = env.now + 600;
+    env.set_time(first);
+    env.run_index(312_000, s.expiry_ts - env.now);
+    env.settle(key).unwrap();
+    env.sweep(key).unwrap();
+
+    let lp0 = env.usdc_of(&lp.pubkey());
+    let second0 = env.usdc_of(&second.pubkey());
+    env.withdraw(&lp, lp_shares).unwrap();
+    env.withdraw(&second, second_shares).unwrap();
+    let lp_out = env.usdc_of(&lp.pubkey()) - lp0;
+    let second_out = env.usdc_of(&second.pubkey()) - second0;
+    // the same price per share for both, up to one unit of rounding
+    let lp_price = u128::from(lp_out) * 1_000_000_000 / u128::from(lp_shares);
+    let second_price = u128::from(second_out) * 1_000_000_000 / u128::from(second_shares);
+    println!(
+        "two depositors: lp {lp_out} for {lp_shares}, second {second_out} for {second_shares}"
+    );
+    assert!(
+        lp_price.abs_diff(second_price) <= 2_000,
+        "price per share {lp_price} vs {second_price}"
+    );
+    assert_eq!(env.shares_of(&lp.pubkey()), 0);
+    assert_eq!(env.shares_of(&second.pubkey()), 0);
+    // only the value of the 1,000 locked units stays in the vault
+    assert!(balance(&env.svm, &idle_pda()) < 2_000);
+}
+
+#[test]
+fn withdrawals_wait_for_idle_usdc_while_funds_sit_in_a_series() {
+    let (mut env, key) = market();
+    let lp = env.lp.insecure_clone();
+    let shares = env.lp_shares();
+    // 10% of the NAV is in the series: all shares need more than idle holds
+    assert_err(env.withdraw(&lp, shares), "NotEnoughIdle");
+    env.withdraw(&lp, shares / 2).unwrap();
+    let s: Series = read(&env.svm, &key);
+    let first = env.now + 600;
+    env.set_time(first);
+    env.run_index(310_000, s.expiry_ts - env.now);
+    env.settle(key).unwrap();
+    env.sweep(key).unwrap();
+    let rest = env.lp_shares();
+    env.withdraw(&lp, rest).unwrap();
+}
+
+#[test]
+fn the_nav_needs_every_active_series_in_vault_order_with_its_index() {
+    let (mut env, daily) = market();
+    env.create_series(1, 0).unwrap();
+    let weekly = series_pda(1, 0);
+    env.seed(weekly).unwrap();
+    let lp = env.lp.insecure_clone();
+    let right = env.active_metas();
+    assert_eq!(right.len(), 4);
+    let ro = AccountMeta::new_readonly;
+    // missing, swapped, wrong index account, a series named twice
+    let cases = vec![
+        vec![],
+        right[..2].to_vec(),
+        vec![
+            ro(weekly, false),
+            ro(index_pda(), false),
+            ro(daily, false),
+            ro(index_pda(), false),
+        ],
+        vec![
+            ro(daily, false),
+            ro(config_pda(), false),
+            ro(weekly, false),
+            ro(index_pda(), false),
+        ],
+        vec![
+            ro(daily, false),
+            ro(index_pda(), false),
+            ro(daily, false),
+            ro(index_pda(), false),
+        ],
+    ];
+    for extra in cases {
+        assert_err(
+            env.vault_flow(&lp, USDC, true, extra),
+            "ActiveSeriesMismatch",
+        );
+    }
+    env.vault_flow(&lp, 10 * USDC, true, right).unwrap();
+}
+
+#[test]
+fn a_donation_cannot_steal_from_the_next_depositor() {
+    let mut env = with_history();
+    env.init_vault();
+    let attacker = env.funded(2_000 * USDC);
+    // the smallest first deposit, then everything but one share unit out
+    env.deposit(&attacker, 10 * USDC).unwrap();
+    let mine = env.shares_of(&attacker.pubkey());
+    env.withdraw(&attacker, mine - 1).unwrap();
+    // inflate the share price with a donation
+    env.donate_to_idle(&attacker, 1_000 * USDC);
+    let victim = env.funded(500 * USDC);
+    env.deposit(&victim, 500 * USDC).unwrap();
+    let vs = env.shares_of(&victim.pubkey());
+    assert!(vs > 0, "the victim gets shares");
+    // the victim's shares are worth almost exactly what was paid
+    env.withdraw(&victim, vs).unwrap();
+    let victim_back = env.usdc_of(&victim.pubkey());
+    println!("donation attack: victim got back {victim_back} of 500000000");
+    assert!(
+        victim_back > 499 * USDC,
+        "victim loses under 0.2%: got {victim_back}"
+    );
+    // the attacker's donation mostly sits with the locked units, it is lost
+    env.withdraw(&attacker, 1).unwrap();
+    let attacker_end = env.usdc_of(&attacker.pubkey());
+    println!("donation attack: attacker ends with {attacker_end} of 2000000000");
+    assert!(
+        attacker_end < 1_010 * USDC,
+        "the attack costs the attacker: {attacker_end}"
+    );
+}
+
+#[test]
+fn dust_deposits_and_withdrawals_are_refused() {
+    let (mut env, _key) = market();
+    let lp = env.lp.insecure_clone();
+    // a price above 1 per unit: 1 unit of tUSDC buys no share
+    let donor = env.funded(100 * USDC);
+    env.donate_to_idle(&donor, 100 * USDC);
+    assert_err(env.deposit(&lp, 1), "InvalidDeposit");
+    assert_err(env.withdraw(&lp, 0), "InvalidWithdraw");
+    // shares the signer does not hold cannot be burned
+    let other = env.funded(0);
+    assert_err(env.withdraw(&other, 1), "insufficient funds");
+}
