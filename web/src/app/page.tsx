@@ -1,14 +1,31 @@
-import { WalletStatus } from "@/components/wallet-status";
+import { Demo } from "@/components/landing/demo";
+import { Footer } from "@/components/landing/footer";
+import { FourProviders } from "@/components/landing/four-providers";
+import { Hero } from "@/components/landing/hero";
+import { PickYourSide } from "@/components/landing/pick-your-side";
+import { SmoothScroll } from "@/components/landing/smooth-scroll";
+import { Story } from "@/components/landing/story";
+import { CLASS, readIndex } from "@/lib/live-index";
+import { readLatestUpdate } from "@/lib/live-sources";
 
-export default function Home() {
+// Re-read the on-chain index and the latest provider prices at most once a minute.
+export const revalidate = 60;
+
+export default async function Landing() {
+  const [rtx, h100, h100Update] = await Promise.all([
+    readIndex(CLASS.rtx4090),
+    readIndex(CLASS.h100),
+    readLatestUpdate(CLASS.h100),
+  ]);
   return (
-    <section className="space-y-6">
-      <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Lock your GPU rental price.</h1>
-      <p className="max-w-2xl text-muted">
-        Clamp is a two-way price lock for GPU rental on Solana. Renters lock their bill, GPU owners lock their
-        revenue, and every claim is fully collateralized. Runs on devnet with test USDC.
-      </p>
-      <WalletStatus />
-    </section>
+    <main>
+      <SmoothScroll />
+      <Hero rtx={rtx} h100={h100} />
+      <PickYourSide />
+      <Story />
+      <FourProviders rtx={rtx} h100={h100} update={h100Update} />
+      <Demo />
+      <Footer />
+    </main>
   );
 }
