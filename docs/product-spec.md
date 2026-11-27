@@ -336,7 +336,7 @@ With `W = upper - lower` in USD and `f = (expiry_ts - now) / duration` (the part
 claims = hours * W / f
 ```
 
-`hours` is the GPU-hours the user expects in the rest of the period. At the start of a series (`f = 1`) this is the approved rule: claims = hours x band width. The web app proposes `hours` from the user's real bill of the last 30 days and lets the user change it. It warns when `f < 0.5`.
+`hours` is the GPU-hours the user expects in the rest of the period. At the start of a series (`f = 1`) this is the approved rule: claims = hours x band width. The web app proposes `hours` from the user's real bill of the last 30 days and lets the user change it. It warns when `f < 0.5`. The lock stores `hours / f` rounded to a whole hour, the GPU-hours of a full period at that pace, so that `claims = stored hours x W` and `roll_lock` buys the same amount for the next full period (D-063).
 
 ### 10.2 Worked example (use it as a test)
 
@@ -367,7 +367,9 @@ Budi rents out his RTX 4090 for 400 hours and buys 80 DOWN for about $40. His ne
 | `close_lock(min_usdc_out)` | Owner only. Before `close_ts`: sells the claims through the pool. After settlement: redeems them. Between `close_ts` and settlement it fails. Pays the owner and closes the lock. |
 | `withdraw_lock_claims()` | Owner only. Moves the claims to the owner's wallet and closes the lock. |
 | `set_auto_roll(on)` | Owner only |
-| `roll_lock()` | Anyone, after settlement, when `auto_roll` is on. Redeems the claims, then buys `hours * W_new` claims of the same side in the current series of the same class and kind, spending at most the redeemed amount. What is left goes to the owner's USDC account. If the amount is too small, it buys what it can. The new lock keeps `hours` and `auto_roll`. |
+| `roll_lock()` | Anyone, after settlement, when `auto_roll` is on. Redeems the claims, then buys `hours * W_new` claims of the same side in the current series of the same class and kind, spending at most the redeemed amount. What is left goes to the owner's USDC account. If the amount is too small, it buys what it can. The new lock keeps `hours` and `auto_roll`. If the owner already has a lock of that side in the new series, the roll adds to it (as a second `open_lock` does). The roll fails when the redeemed amount is 0 or `hours` is 0 (`NothingToRoll`: the owner closes the lock), when the new series is not tradable, and when the average price paid per claim is above the side's fair value plus `ROLL_MAX_PREMIUM` (`RollPriceTooHigh`), so a trade placed just before the roll cannot make the owner overpay (D-063). |
+
+`ROLL_MAX_PREMIUM` = 50,000 micro-USDC per claim (0.05 USDC, covers the 1% fee and normal slippage) **(initial, D-063)**.
 
 ## 11. Settlement and redeem
 
