@@ -151,3 +151,40 @@ pub struct SeriesSwept {
     pub down_units: u64,
     pub payout: u64,
 }
+
+/// `open_lock` bought `claims` for `usdc_in` into the lock (spec 10.4).
+/// The totals are the lock's after this call.
+#[event]
+pub struct LockOpened {
+    pub lock: Pubkey,
+    pub owner: Pubkey,
+    pub series: Pubkey,
+    pub side: u8,
+    pub usdc_in: u64,
+    pub claims: u64,
+    pub total_claims: u64,
+    pub total_paid: u64,
+    pub hours: u32,
+    pub ref_rate: u64,
+    pub auto_roll: bool,
+}
+
+/// A lock closed. `how`: 0 sold through the pool, 1 redeemed after
+/// settlement, 2 claims withdrawn to the owner. `usdc_out` is 0 for 2.
+#[event]
+pub struct LockClosed {
+    pub lock: Pubkey,
+    pub owner: Pubkey,
+    pub series: Pubkey,
+    pub side: u8,
+    pub claims: u64,
+    pub usdc_out: u64,
+    pub how: u8,
+}
+
+#[event]
+pub struct LockAutoRollSet {
+    pub lock: Pubkey,
+    pub owner: Pubkey,
+    pub on: bool,
+}

@@ -76,6 +76,10 @@ pub enum ClampError {
     SlippageExceeded,
     #[msg("Nothing to sweep")]
     NothingToSweep,
+    #[msg("Trading is closed and the series is not settled yet: wait for settlement")]
+    LockWaitsForSettlement,
+    #[msg("The lock belongs to another series")]
+    WrongLockSeries,
 }
 
 impl From<MathError> for ClampError {

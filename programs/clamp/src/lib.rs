@@ -1,8 +1,8 @@
 //! Clamp: a fully collateralized two-way price lock on a GPU rental price index.
 //!
 //! M1: the Clamp Index (config, classes, reporters, updates, period average).
-//! M2: series, claim pairs, settlement and redeem; the pool, vault and locks
-//! follow (docs/architecture.md 3.3).
+//! M2: series, claim pairs, settlement and redeem, the pool and the vault.
+//! M3: Bill Lock and Revenue Lock (docs/architecture.md 3.3).
 
 use anchor_lang::prelude::*;
 
@@ -114,5 +114,42 @@ pub mod clamp {
     /// Returns the vault's units of a settled series to idle USDC. Anyone.
     pub fn sweep_series(ctx: Context<SweepSeries>) -> Result<()> {
         instructions::trade::handle_sweep_series(ctx)
+    }
+
+    /// Buys claims of `side` into the owner's lock for this series (spec 10.4).
+    #[allow(clippy::too_many_arguments)]
+    pub fn open_lock(
+        ctx: Context<OpenLock>,
+        side: u8,
+        usdc_in: u64,
+        min_claims_out: u64,
+        hours: u32,
+        ref_rate: u64,
+        auto_roll: bool,
+    ) -> Result<()> {
+        instructions::lock_flow::handle_open_lock(
+            ctx,
+            side,
+            usdc_in,
+            min_claims_out,
+            hours,
+            ref_rate,
+            auto_roll,
+        )
+    }
+
+    /// Sells (before close) or redeems (after settlement) the lock's claims, pays the owner, closes the lock.
+    pub fn close_lock(ctx: Context<CloseLock>, min_usdc_out: u64) -> Result<()> {
+        instructions::lock_flow::handle_close_lock(ctx, min_usdc_out)
+    }
+
+    /// Moves the lock's claims to the owner's wallet and closes the lock.
+    pub fn withdraw_lock_claims(ctx: Context<WithdrawLockClaims>) -> Result<()> {
+        instructions::lock_flow::handle_withdraw_lock_claims(ctx)
+    }
+
+    /// Turns auto-roll of a lock on or off. Owner only.
+    pub fn set_auto_roll(ctx: Context<SetAutoRoll>, on: bool) -> Result<()> {
+        instructions::lock_flow::handle_set_auto_roll(ctx, on)
     }
 }

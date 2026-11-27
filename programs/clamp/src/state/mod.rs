@@ -1,6 +1,7 @@
 pub mod class_config;
 pub mod config;
 pub mod index_state;
+pub mod lock;
 pub mod observations;
 pub mod series;
 pub mod vault;
@@ -8,6 +9,7 @@ pub mod vault;
 pub use class_config::*;
 pub use config::*;
 pub use index_state::*;
+pub use lock::*;
 pub use observations::*;
 pub use series::*;
 pub use vault::*;

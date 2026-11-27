@@ -47,3 +47,5 @@ pub const CLAIM_DECIMALS: u8 = 6;
 /// Sides of a claim.
 pub const SIDE_UP: u8 = 0;
 pub const SIDE_DOWN: u8 = 1;
+pub const LOCK_SEED: &[u8] = b"lock";
+pub const ESCROW_SEED: &[u8] = b"escrow";
