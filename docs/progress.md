@@ -28,7 +28,7 @@ Updated 2026-11-27 late. Code of M3 to M6 is done, deployed and pushed; M0 to M2
 
 1. Real tests, in one batch (Wangsit's choice: code first): the Vast.ai bill with a read-only key (A6), then a lock sized from it opened and closed on devnet (M3 done-when); a Runpod read-only key (A8); Vast.ai host earnings if a host key is found (A18), else the owner types the hours; one auto-roll lock rolled by the tick on devnet (M6 done-when).
 2. M7: README (written last, with the before and during sections), verify from a clean clone, final deep review.
-3. Open decision for the team: D-063 (`roll_lock` rules), proposed.
+3. ~~Open decision for the team: D-063 (`roll_lock` rules)~~ approved 2026-11-27.
 
 ### AG (web app)
 
@@ -261,7 +261,7 @@ Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it
 
 ### 2026-11-27, M6 Wangsit part (Wangsit, during the hackathon)
 
-- `roll_lock` (`lock_flow.rs`): redeems a settled auto-roll lock, buys `hours * W_new` claims of the same side in the current series of the same class and kind with at most the payout, paid straight from the old series' collateral, gives the rest to the owner, closes the old lock. Rules not set before are in D-063 (proposed): price cap `ROLL_MAX_PREMIUM` 0.05 USDC over fair value, adding to an existing lock, `NothingToRoll` for a payout or hours of 0, and `hours` stored per full period. About 101,000 CU. `execute_buy` takes the payer's signer seeds and the event user. `close_lock` closes an empty escrow before `close_ts` without a sale.
+- `roll_lock` (`lock_flow.rs`): redeems a settled auto-roll lock, buys `hours * W_new` claims of the same side in the current series of the same class and kind with at most the payout, paid straight from the old series' collateral, gives the rest to the owner, closes the old lock. Rules not set before are in D-063 (approved the same night): price cap `ROLL_MAX_PREMIUM` 0.05 USDC over fair value, adding to an existing lock, `NothingToRoll` for a payout or hours of 0, and `hours` stored per full period. About 101,000 CU. `execute_buy` takes the payer's signer seeds and the event user. `close_lock` closes an empty escrow before `close_ts` without a sale.
 - 6 new LiteSVM tests (32 in `test_series.rs`): a roll by a stranger with the rent and USDC accounted, a short payout spent fully, adding to an existing lock, refusals (auto-roll off, not settled, other kind, wrong mint, wrong rent payer, 0 hours), a pool pushed above fair value refused then allowed after the price comes back, claims settled at 0.
 - Crank: `planRolls` (pure, 4 tests, 47 backend tests) and the roll step after settle, create and seed, on fresh state.
 - SDK: `verifySettlement` (5 tests): run against devnet, **14 of 14 settled series match**, the start snapshots too. `getNosanaEarnings` (4 tests), read live on a public node (94 finished jobs in 7 days, an RTX 3090 node, so unassigned). The Nosana API changed since 2026-11-17: `state` is now `COMPLETED`, pages are at most 50, and browsers may call it. `lockSizeFromBill`: the size straight from a bill, so a small bill in a daily series is no longer rounded to 0 hours. The earnings class field is `rate` with `hoursSource` (replaces `listedRate`). README for the SDK, its example run against devnet. 118 SDK tests.
