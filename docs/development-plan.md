@@ -105,9 +105,9 @@ Done when: an owner flow opens a DOWN lock on devnet, sized from real earnings d
 
 ## M6: Proof, SDK, auto-roll, Nosana (Saturday 2026-11-28, afternoon)
 
-- [ ] W: `verifySettlement` in the SDK, `roll_lock` with tests, roll step in the tick
-- [ ] W: Nosana host earnings from the public job history (the API was tested on 2026-11-17, see `research.md` section 3)
-- [ ] W: SDK readme with a short example
+- [x] W: `verifySettlement` in the SDK, `roll_lock` with tests, roll step in the tick (roll not deployed yet)
+- [x] W: Nosana host earnings from the public job history (the API was tested on 2026-11-17, see `research.md` section 3)
+- [x] W: SDK readme with a short example
 - [ ] AG: proof page, auto-roll switch, Nosana earnings in Revenue Lock
 
 Done when: the proof page recomputes a settled series and matches the chain, and one lock has rolled into a new series on its own.

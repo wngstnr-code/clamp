@@ -110,7 +110,7 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 | M3 Bill Lock                     | Started 2026-11-27 22:09 WIB (hackathon window). Stages 1 (lock instructions), 2 (deploy), 3 (SDK readers and sizing) and 4 (bill proxy and parser, code only) done 2026-11-27. The real bill test waits for 2026-11-28. |
 | M4 Vault complete | Wangsit part done 2026-11-27 (tests and devnet check, the program code was already there from M2). AG part open (vault page). |
 | M5 Revenue Lock | Wangsit part done in code 2026-11-27 (earnings proxy and parser, tests with a fake provider). Not tried with a host account: no pilot owner yet, so the done-when uses hours typed in by the owner. AG part open (Revenue Lock page). |
-| M6 Proof, SDK, auto-roll, Nosana | not started                                                                                                                                                                                                                      |
+| M6 Proof, SDK, auto-roll, Nosana | Wangsit part done in code 2026-11-27: `roll_lock` with tests, roll step in the tick, `verifySettlement` (14 of 14 settled devnet series match), Nosana earnings (read live), SDK readme. Not deployed yet: `roll_lock` needs the next verifiable build. AG part open (proof page, auto-roll switch, Nosana in Revenue Lock). |
 | M7 Submission                    | not started                                                                                                                                                                                                                      |
 
 
@@ -235,6 +235,15 @@ Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-27, M6 Wangsit part (Wangsit, during the hackathon)
+
+- `roll_lock` (`lock_flow.rs`): redeems a settled auto-roll lock, buys `hours * W_new` claims of the same side in the current series of the same class and kind with at most the payout, paid straight from the old series' collateral, gives the rest to the owner, closes the old lock. Rules not set before are in D-063 (proposed): price cap `ROLL_MAX_PREMIUM` 0.05 USDC over fair value, adding to an existing lock, `NothingToRoll` for a payout or hours of 0, and `hours` stored per full period. About 101,000 CU. `execute_buy` takes the payer's signer seeds and the event user. `close_lock` closes an empty escrow before `close_ts` without a sale.
+- 6 new LiteSVM tests (32 in `test_series.rs`): a roll by a stranger with the rent and USDC accounted, a short payout spent fully, adding to an existing lock, refusals (auto-roll off, not settled, other kind, wrong mint, wrong rent payer, 0 hours), a pool pushed above fair value refused then allowed after the price comes back, claims settled at 0.
+- Crank: `planRolls` (pure, 4 tests, 47 backend tests) and the roll step after settle, create and seed, on fresh state.
+- SDK: `verifySettlement` (5 tests): run against devnet, **14 of 14 settled series match**, the start snapshots too. `getNosanaEarnings` (4 tests), read live on a public node (94 finished jobs in 7 days, an RTX 3090 node, so unassigned). The Nosana API changed since 2026-11-17: `state` is now `COMPLETED`, pages are at most 50, and browsers may call it. `lockSizeFromBill`: the size straight from a bill, so a small bill in a daily series is no longer rounded to 0 hours. The earnings class field is `rate` with `hoursSource` (replaces `listedRate`). README for the SDK, its example run against devnet. 118 SDK tests.
+- Next: commit, verifiable build of the commit, devnet upgrade, then push the backend (the roll step calls `roll_lock`).
+
 
 ### 2026-11-27, M5 Wangsit part: host earnings reader (Wangsit, during the hackathon)
 
