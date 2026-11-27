@@ -130,6 +130,7 @@ export interface LockState {
   autoRoll: boolean;
   escrowAmount: bigint;
   rentPayer: string;
+  createdTs: number;
 }
 
 export interface RollAction {
@@ -138,29 +139,36 @@ export interface RollAction {
   newSeries: SeriesState;
 }
 
-/** Rolls per tick, at most (each is one transaction of about 100,000 CU). */
+/** Successful rolls per tick, at most (each is one transaction of about 100,000 CU). */
 export const MAX_ROLLS_PER_TICK = 10;
+/** Roll attempts per tick, at most, so locks that keep failing cannot block the others for long. */
+export const MAX_ROLL_ATTEMPTS_PER_TICK = 20;
+/**
+ * The worker pays about 0.0044 SOL of rent for each rolled lock, returned only
+ * when the owner closes it. It rolls a lock only when the payout is at least
+ * 1 tUSDC, so dust locks cannot drain the worker's SOL cheaply.
+ */
+export const MIN_ROLL_PAYOUT = 1_000_000n;
+/** The roll step stops when the worker holds less SOL than this (lamports). */
+export const MIN_WORKER_LAMPORTS = 500_000_000;
 
 /**
- * Locks to roll now (spec 10.4, D-063): auto-roll on, the lock's series
- * settled, claims worth more than 0, hours above 0, and the current series
- * of the same class and kind seeded and still trading. Locks the program
- * would refuse are left out, so the crank does not send failing transactions.
+ * Locks that may roll now (spec 10.4, D-063), oldest lock first: auto-roll
+ * on, the lock's series settled, a payout of at least MIN_ROLL_PAYOUT, hours
+ * above 0, and the current series of the same class and kind seeded and still
+ * trading. Locks the program would refuse are left out. No cap here: the
+ * executor counts attempts and successes.
  */
-export function planRolls(
-  input: { now: number; classes: ClassState[]; series: SeriesState[]; locks: LockState[] },
-  max = MAX_ROLLS_PER_TICK,
-): RollAction[] {
+export function planRolls(input: { now: number; classes: ClassState[]; series: SeriesState[]; locks: LockState[] }): RollAction[] {
   const byKey = new Map(input.series.map((s) => [s.key, s]));
   const out: RollAction[] = [];
-  for (const lock of input.locks) {
-    if (out.length >= max) break;
+  for (const lock of [...input.locks].sort((a, b) => a.createdTs - b.createdTs || a.key.localeCompare(b.key))) {
     if (!lock.autoRoll || lock.hours <= 0 || lock.escrowAmount <= 0n) continue;
     const old = byKey.get(lock.series);
     if (!old || !old.settled) continue;
     const up = old.upValue ?? 0;
     const value = lock.side === 0 ? up : 1_000_000 - up;
-    if ((lock.escrowAmount * BigInt(value)) / 1_000_000n <= 0n) continue;
+    if ((lock.escrowAmount * BigInt(value)) / 1_000_000n < MIN_ROLL_PAYOUT) continue;
     const cls = input.classes.find((c) => c.classId === old.classId);
     const currentKey = cls?.currentSeries?.[old.kind];
     const next = currentKey ? byKey.get(currentKey) : undefined;

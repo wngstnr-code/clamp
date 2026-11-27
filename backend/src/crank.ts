@@ -6,7 +6,17 @@ import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 
 import { createSeries, program, rollLock, seedSeries, settleSeries, sweepSeries } from "./clamp-tx.js";
-import { expiryWait, planCrank, planRolls, type ClassState, type LockState, type SeriesState } from "./crank-plan.js";
+import {
+  MAX_ROLLS_PER_TICK,
+  MAX_ROLL_ATTEMPTS_PER_TICK,
+  MIN_WORKER_LAMPORTS,
+  expiryWait,
+  planCrank,
+  planRolls,
+  type ClassState,
+  type LockState,
+  type SeriesState,
+} from "./crank-plan.js";
 import type { Store } from "./store.js";
 import type { StepResult } from "./tick.js";
 
@@ -125,19 +135,37 @@ export async function crankStep(connection: Connection, worker: Keypair, store: 
       await run(`seed:${a.series.key}`, () => seedSeries(connection, worker, new PublicKey(a.series.key), a.series.classId));
     }
   }
-  // Rolls (M6) run on fresh state: a series settled and its successor seeded
-  // in this tick are already visible.
-  await rollStep(connection, worker, run);
-
   if (store) for (const r of results) await store.logRun(`crank:${r.action}`, r.ok, r.detail || null, r.signature ?? null);
-  return results;
+
+  // Rolls (M6) run on fresh state: a series settled and its successor seeded
+  // in this tick are already visible. A failure here never undoes the above.
+  const rolls: StepResult[] = [];
+  try {
+    await rollStep(connection, worker, async (action, f) => {
+      try {
+        const signature = await f();
+        rolls.push({ action, ok: true, detail: "", signature });
+        return true;
+      } catch (e) {
+        rolls.push({ action, ok: false, detail: (e as Error).message.slice(0, 300) });
+        return false;
+      }
+    });
+  } catch (e) {
+    rolls.push({ action: "roll", ok: false, detail: (e as Error).message.slice(0, 300) });
+  }
+  if (store) for (const r of rolls) await store.logRun(`crank:${r.action}`, r.ok, r.detail || null, r.signature ?? null);
+  return [...results, ...rolls];
 }
 
 async function rollStep(
   connection: Connection,
   worker: Keypair,
-  run: (action: string, f: () => Promise<string>) => Promise<string | null>,
+  attempt: (action: string, f: () => Promise<string>) => Promise<boolean>,
 ) {
+  if ((await connection.getBalance(worker.publicKey)) < MIN_WORKER_LAMPORTS) {
+    throw new Error("worker SOL below the roll floor: rolls paused");
+  }
   const now = await chainNow(connection);
   const state = await loadState(connection);
   const locks: LockState[] = (await getLocks(connection)).map((l) => ({
@@ -149,13 +177,19 @@ async function rollStep(
     autoRoll: l.autoRoll,
     escrowAmount: l.escrowAmount,
     rentPayer: l.rentPayer.toBase58(),
+    createdTs: l.createdTs,
   }));
+  let attempts = 0;
+  let done = 0;
   for (const r of planRolls({ now, classes: state.classes, series: state.series, locks })) {
+    if (attempts >= MAX_ROLL_ATTEMPTS_PER_TICK || done >= MAX_ROLLS_PER_TICK) break;
     const owner = new PublicKey(r.lock.owner);
-    // the owner's tUSDC account receives the rest; without it the roll would fail
+    // the owner's tUSDC account receives the rest; without it the roll would
+    // fail, so it does not count as an attempt
     const ata = getAssociatedTokenAddressSync(TUSDC_MINT, owner);
     if (!(await connection.getAccountInfo(ata))) continue;
-    await run(`roll:${r.lock.key}`, () =>
+    attempts += 1;
+    const ok = await attempt(`roll:${r.lock.key}`, () =>
       rollLock(connection, worker, {
         owner,
         side: r.lock.side,
@@ -165,6 +199,7 @@ async function rollStep(
         rentPayer: new PublicKey(r.lock.rentPayer),
       }),
     );
+    if (ok) done += 1;
   }
 }
 

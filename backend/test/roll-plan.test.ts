@@ -28,8 +28,9 @@ const lock = (over: Partial<LockState> = {}): LockState => ({
   side: 0,
   hours: 10,
   autoRoll: true,
-  escrowAmount: 1_000_000n,
+  escrowAmount: 10_000_000n,
   rentPayer: "O",
+  createdTs: NOW - DAY,
   ...over,
 });
 const plan = (locks: LockState[], series = [OLD, NEW], classes = [cls]) => planRolls({ now: NOW, classes, series, locks });
@@ -46,8 +47,10 @@ describe("planRolls", () => {
     // UP worth 0, and DOWN worth 0
     expect(plan([lock()], [s({ upValue: 0 }), NEW])).toEqual([]);
     expect(plan([lock({ side: 1 })], [s({ upValue: 1_000_000 }), NEW])).toEqual([]);
-    // dust that redeems to 0
+    // a payout below 1 tUSDC (dust would drain the worker's rent)
     expect(plan([lock({ escrowAmount: 1n })])).toEqual([]);
+    expect(plan([lock({ escrowAmount: 1_999_998n })])).toEqual([]);
+    expect(plan([lock({ escrowAmount: 2_000_000n })])).toHaveLength(1);
     // the lock's series is not settled yet
     expect(plan([lock()], [s({ settled: false }), NEW])).toEqual([]);
   });
@@ -59,11 +62,13 @@ describe("planRolls", () => {
     expect(plan([lock()], [OLD, NEW], [{ ...cls, currentSeries: undefined }])).toEqual([]);
   });
 
-  it("rolls into the series of the lock's own kind and caps the rolls per tick", () => {
+  it("rolls into the series of the lock's own kind, oldest lock first, with no cap in the plan", () => {
     const weekly = s({ key: "w", kind: 1, settled: false, closeTs: NOW + 5 * DAY, expiryTs: NOW + 7 * DAY });
     const both = { ...cls, currentSeries: ["new", "w", ""] };
     expect(plan([lock()], [OLD, NEW, weekly], [both])[0]?.newSeries.key).toBe("new");
-    const many = Array.from({ length: 15 }, (_, i) => lock({ key: `L${i}` }));
-    expect(planRolls({ now: NOW, classes: [cls], series: [OLD, NEW], locks: many })).toHaveLength(10);
+    const many = Array.from({ length: 15 }, (_, i) => lock({ key: `L${i}`, createdTs: NOW - i }));
+    const p = plan(many);
+    expect(p).toHaveLength(15);
+    expect(p[0]?.lock.key).toBe("L14");
   });
 });
