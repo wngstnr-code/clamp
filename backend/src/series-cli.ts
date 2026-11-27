@@ -6,6 +6,7 @@
 //   pnpm --filter @clamp/backend series vault
 //   pnpm --filter @clamp/backend series vault-init
 //   pnpm --filter @clamp/backend series deposit <usdc> <keypair.json>
+//   pnpm --filter @clamp/backend series withdraw <shares> <keypair.json>
 //   pnpm --filter @clamp/backend series seed   <class> <kind> <seq>
 //   pnpm --filter @clamp/backend series buy|sell <class> <kind> <seq> <side 0|1> <usdc or claims> <keypair.json>
 //   pnpm --filter @clamp/backend series redeem <class> <kind> <seq> <side 0|1> <claims> <keypair.json>
@@ -169,6 +170,34 @@ async function main() {
     }
     return metas;
   };
+
+  if (cmd === "withdraw") {
+    const user = load(b ?? "test-user-2.json");
+    const program = clampProgram(connection, new KeypairWallet(user));
+    const userCollateral = getAssociatedTokenAddressSync(TUSDC_MINT, user.publicKey);
+    const before = await connection.getTokenAccountBalance(userCollateral);
+    const shares = Math.round(Number(a) * 1e6);
+    const sig = await program.methods
+      .withdraw(new BN(shares))
+      .accountsPartial({
+        user: user.publicKey,
+        vault: vaultPda(),
+        shareMint: sharesMintPda(),
+        idle: idlePda(),
+        collateralMint: TUSDC_MINT,
+        userCollateral,
+        userShares: getAssociatedTokenAddressSync(sharesMintPda(), user.publicKey),
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .remainingAccounts(await activeMetas())
+      .rpc();
+    const after = await connection.getTokenAccountBalance(userCollateral);
+    const paid = Number(after.value.amount) - Number(before.value.amount);
+    console.log(`withdrew ${a} shares (${sig}): paid ${paid / 1e6} tUSDC, ${(paid / shares).toFixed(6)} per share`);
+    return;
+  }
 
   if (cmd === "deposit") {
     const user = load(b ?? "test-user-2.json");
@@ -335,7 +364,7 @@ async function main() {
     return;
   }
 
-  throw new Error("usage: series show|create|mint|merge|vault-init|deposit|seed|buy|sell|redeem|lock-open|lock-close|locks ...");
+  throw new Error("usage: series show|create|mint|merge|vault-init|deposit|withdraw|seed|buy|sell|redeem|lock-open|lock-close|locks ...");
 }
 
 main().catch((err) => {
