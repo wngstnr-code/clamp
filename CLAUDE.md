@@ -18,7 +18,7 @@ Read when relevant:
 - `docs/decisions.md`: why things are the way they are (decision log)
 - `docs/research.md`: market, competitors, data sources, user interviews
 
-Status on 2026-11-17: the docs exist, no code exists yet. The team approved the design decisions D-018 to D-045 on 2026-11-17. A decision marked "proposed" or "open" in `docs/decisions.md` is not final: say so when a task depends on one. M0 started on 2026-11-18 on the user's go (D-047). Work goes stage by stage: report after each stage and wait for the user. `docs/progress.md` lists the assumptions that still need a test. The idea itself came from the final idea document `Clamp - Ide Final.pdf` (Indonesian, kept outside the repo). If a file listed here is missing, say so. Do not invent its content.
+Status on 2026-11-27: M0 to M2 were built before the hackathon, M3 to M6 (Wangsit's part) during it; `docs/progress.md` has the current state. The team approved the design decisions D-018 to D-045 on 2026-11-17. A decision marked "proposed" or "open" in `docs/decisions.md` is not final: say so when a task depends on one. M0 started on 2026-11-18 on the user's go (D-047). Work goes stage by stage: report after each stage and wait for the user. `docs/progress.md` lists the assumptions that still need a test. The idea itself came from the final idea document `Clamp - Ide Final.pdf` (Indonesian, kept outside the repo). If a file listed here is missing, say so. Do not invent its content.
 
 Before you write code, say in chat (in Indonesian) which task from `docs/progress.md` you are about to do.
 If the docs and the code disagree, the code shows what exists and the spec shows what should exist. Tell the user about the mismatch. Do not silently pick one.
