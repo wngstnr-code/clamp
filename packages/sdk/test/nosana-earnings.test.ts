@@ -47,9 +47,11 @@ describe("Nosana host earnings", () => {
       FROM,
       NOW,
     );
-    expect(e.jobs).toBe(4);
+    // the failed job is left out of the earnings and shown on its own
+    expect(e.jobs).toBe(3);
     expect(e.failedJobs).toBe(1);
-    expect(e.byClass).toEqual([{ classId: 1, gpuEarn: 800_000, estGpuHours: 2.5, rate: 320_000, hoursSource: "job_times" }]);
+    expect(e.failedHours).toBe(1);
+    expect(e.byClass).toEqual([{ classId: 1, gpuEarn: 480_000, estGpuHours: 1.5, rate: 320_000, hoursSource: "job_times" }]);
     expect(e.unassigned.map((l) => l.gpuName)).toEqual(["NVIDIA 3090"]);
     expect(e.provider).toBe("nosana");
     expect(e.windowSecs).toBe(30 * 86_400);
@@ -59,7 +61,7 @@ describe("Nosana host earnings", () => {
   it("pages until the window starts, and says when the page limit cut it short", async () => {
     const urls: string[] = [];
     const page = (offset: number) =>
-      Array.from({ length: 50 }, (_, i) => job({ timeStart: NOW - (offset + i + 2) * 40_000, timeEnd: NOW - (offset + i + 1) * 40_000 }));
+      Array.from({ length: 50 }, (_, i) => job({ address: `J${offset + i}`, timeStart: NOW - (offset + i + 2) * 40_000, timeEnd: NOW - (offset + i + 1) * 40_000 }));
     const fetchJson = async (url: string) => {
       urls.push(url);
       if (url.endsWith("/markets/")) return markets;
@@ -74,6 +76,13 @@ describe("Nosana host earnings", () => {
     expect(e.truncated).toBe(false);
     const cut = await getNosanaEarnings(NODE, { now: NOW, fetchJson, maxPages: 1 });
     expect(cut.truncated).toBe(true);
+  });
+
+  it("counts a job that shows up on two pages once", () => {
+    const a = job({ address: "J1" });
+    const e = nosanaEarningsFromJobs(NODE, [a, job({ address: "J2", timeStart: NOW - 3_600, timeEnd: NOW }), a], markets, FROM, NOW);
+    expect(e.jobs).toBe(2);
+    expect(e.byClass[0]?.estGpuHours).toBe(2);
   });
 
   it("refuses a bad node or window", async () => {

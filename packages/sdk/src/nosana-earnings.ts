@@ -23,14 +23,22 @@ export interface NosanaEarnings extends EarningsSummary {
   node: string;
   from: number;
   to: number;
-  /** Finished jobs counted, and how many of them ended with a failed status. */
+  /** Finished jobs counted in the earnings. */
   jobs: number;
+  /**
+   * Finished jobs with a failed status, left out of the earnings and hours:
+   * whether Nosana pays a host for them is not checked yet, and a lock sized
+   * on unpaid hours would be too large.
+   */
   failedJobs: number;
+  failedHours: number;
   /** The page limit was reached before the start of the window: earnings are a lower bound. */
   truncated: boolean;
 }
 
 interface Job {
+  id?: unknown;
+  address?: unknown;
   market?: unknown;
   node?: unknown;
   state?: unknown;
@@ -59,8 +67,16 @@ export function nosanaEarningsFromJobs(
   const by = new Map<string, { secs: number; earn: number }>();
   let count = 0;
   let failed = 0;
+  let failedSecs = 0;
+  // a job finishing while the pages are read shifts the list: drop repeats
+  const seen = new Set<string>();
   for (const j of jobs as Job[]) {
     if (j.node !== node || j.state !== 2 || typeof j.market !== "string") continue;
+    const id = typeof j.address === "string" ? j.address : j.id !== undefined ? String(j.id) : null;
+    if (id !== null) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+    }
     const start = n(j.timeStart);
     const end = n(j.timeEnd);
     const rate = n(j.usdRewardPerHour);
@@ -68,8 +84,12 @@ export function nosanaEarningsFromJobs(
     // the part of the job inside the window
     const secs = Math.min(end, to) - Math.max(start, from);
     if (secs <= 0) continue;
+    if (j.jobStatus === "failed") {
+      failed += 1;
+      failedSecs += secs;
+      continue;
+    }
     count += 1;
-    if (j.jobStatus === "failed") failed += 1;
     const b = by.get(j.market) ?? { secs: 0, earn: 0 };
     b.secs += secs;
     b.earn += (secs / 3_600) * rate;
@@ -92,7 +112,17 @@ export function nosanaEarningsFromJobs(
   });
   const days = Math.max(1, Math.round((to - from) / 86_400));
   const summary = summarizeEarnings(days, lines, "nosana");
-  return { ...summary, windowSecs: to - from, node, from, to, jobs: count, failedJobs: failed, truncated };
+  return {
+    ...summary,
+    windowSecs: to - from,
+    node,
+    from,
+    to,
+    jobs: count,
+    failedJobs: failed,
+    failedHours: Math.round((failedSecs / 3_600) * 1000) / 1000,
+    truncated,
+  };
 }
 
 type FetchJson = (url: string) => Promise<unknown>;
