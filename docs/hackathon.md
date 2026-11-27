@@ -8,11 +8,11 @@ Official sources: https://hack.dev3pack.xyz/ and https://hack.dev3pack.xyz/faq (
 |---|---|---|
 | Registration | Before the event, as early as possible | Apply at https://app.dev3pack.xyz/hackathon/register. Applications are reviewed: once accepted, the applicant's email is whitelisted and can sign up at hack.dev3pack.xyz/auth/sign-up. **Both AG and Wangsit must apply and be accepted**, then one creates a team in the dashboard (hack.dev3pack.xyz/dashboard/teams) and the other joins with the 6-character code. Submission happens in the same dashboard, so no acceptance means no submission. |
 | Hackathon window | 2026-11-27 to 2026-11-29 | Hybrid, with build stations (Jakarta and Semarang among them) |
-| **Submission** | **Sunday 2026-11-29, 12:00 to 14:00 WIB (05:00 to 07:00 UTC)** | From the dashboard schedule ("Project Submission", read on 2026-11-19). Treat 12:00 WIB as the real deadline: everything (repo public, README, video, live link, verified deploy) must be ready by the morning of 2026-11-29. If the organizers state a later hour, record it here. |
+| **Submission** | **Sunday 2026-11-29, 12:00 to 14:00 WIB (05:00 to 07:00 UTC)** | Dashboard schedule ("Project Submission"). Checked again on 2026-11-27 23:53 WIB: the dashboard countdown ends at **14:00 WIB on 2026-11-29**, the hard cutoff. We still aim for 12:00 WIB: everything (repo public, README, video, live link, verified deploy) must be ready by the morning of 2026-11-29. |
 | Kick off | Friday 2026-11-27, 22:00 to 23:00 WIB | Dashboard schedule |
 | Project feedback session | Saturday 2026-11-28, 20:00 to 22:00 WIB | Dashboard schedule. A chance to show a working draft. |
-| Closing and winners | Sunday 2026-11-29, 22:00 to 23:00 WIB | Dashboard schedule |
-| Global Demo Day | Tuesday 2026-12-01, 20:00 to 22:00 WIB | Dashboard schedule |
+| Closing and winners | Sunday 2026-11-29, 22:00 to 23:00 WIB | Dashboard: "Closing Ceremony & Winners Announcement", one global event (checked 2026-11-27) |
+| Global Demo Day | Tuesday 2026-12-01, 20:00 to 22:00 WIB | Dashboard schedule, after the winners announcement |
 | Bootcamp (optional) | 2026-11-24 to 2026-11-27, 20:00 WIB | Solana Rust Bootcamp, separate registration |
 | Accelerator application | by 2026-12-03 | Bridge Accelerator, 8 weeks, 0% equity |
 
@@ -25,6 +25,12 @@ Official sources: https://hack.dev3pack.xyz/ and https://hack.dev3pack.xyz/faq (
 | Solana Mobile track | Seeker phones | We do not have a Seeker. Deferred (D-014). |
 | Gaming track | With Byte Arena | Not for us |
 | Top 30 | Claude Pro | |
+
+Prize tracks on the dashboard (checked 2026-11-27): Best App Overall on Solana ($5,000), Best DeFi App on Solana ($250), Best Agentic App on Solana, Best Seeker Mobile App (Seeker phones), Firecrawl ($1,197 per team member), ElevenLabs ($897 per team member), Pollar ($500), Byte game ($500), **Supabase ($100 per team member)**, plus perks and an accelerator. FAQ: every project is in the main Solana track; a team may also opt into partner tracks "that your project actually uses", and judges check the requirements.
+
+Tracks that fit Clamp without any change: **Supabase** (we really use it: Postgres tables, `pg_cron` for the 15 minute tick, the `raw` storage bucket for the reporters' archive) and **Best DeFi App** (fully collateralized claims, a pool and a vault). Opt into both at submission; the README must show the Supabase use plainly. Do not opt into tracks we do not use.
+
+FAQ on earlier work (checked 2026-11-27): building before the hackathon is allowed if the project is Solana-related and at least one feature is added during the hackathon (M3 to M6 were).
 
 Partners named so far: ElevenLabs, Firecrawl, Supabase, Noah AI, Pollar (Latin America only). Partner tracks were not announced yet on 2026-11-17. When they are, check once whether one fits without changing the product.
 
