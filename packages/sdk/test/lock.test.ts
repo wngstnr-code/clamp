@@ -181,6 +181,11 @@ describe("lock size from a bill", () => {
     expect(size.lateInPeriod).toBe(true);
     expect(size.hours).toBe(4);
   });
+  it("stores at least 1 hour for a lock, so a small bill can still roll", () => {
+    const daily = series({ expiryTs: T + 86_400 });
+    expect(lockSizeFromBill(10, daily, T)?.hours).toBe(1); // 10 h a month = 0.33 h a day
+    expect(lockSizeFromBill(0, daily, T)).toMatchObject({ claims: 0n, hours: 0 });
+  });
   it("takes the window of the bill and refuses bad input", () => {
     // 7 days of 100 h: the same pace as 30 days of 428.57 h
     expect(lockSizeFromBill(100, series(), T, 7 * 86_400)?.claims).toBe((100_000n * 200_000n * 2_592_000n) / (1000n * 604_800n));

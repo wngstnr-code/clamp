@@ -150,7 +150,8 @@ export function lockSizeFromBill(billHours: number, s: SeriesView, now: number, 
     claims,
     fractionLeftPpm,
     lateInPeriod: fractionLeftPpm < PPM / 2n,
-    hours: Math.round((billHours * duration) / windowSecs),
+    // at least 1 when there is a lock, so roll_lock can roll it
+    hours: claims > 0n ? Math.max(1, Math.round((billHours * duration) / windowSecs)) : 0,
   };
 }
 
