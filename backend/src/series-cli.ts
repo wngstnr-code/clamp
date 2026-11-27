@@ -28,6 +28,7 @@ import {
   configPda,
   escrowPda,
   getIndex,
+  getLock,
   getLocks,
   getSeries,
   lockPda,
@@ -341,9 +342,14 @@ async function main() {
       const usdcIn = new BN(Math.round(Number(e) * 1e6));
       const hours = Number(process.argv[8]);
       const s = await getSeries(connection, series);
-      const size = s ? lockSize(hours, s, Math.floor(Date.now() / 1000)) : null;
+      if (!s) throw new Error("series not found");
+      const now = Math.floor(Date.now() / 1000);
+      const size = lockSize(hours, s, now);
+      // the lock stores the hours of a full period (spec 10.1, D-063)
+      const remaining = Math.min(s.expiryTs - now, s.expiryTs - s.startTs);
+      const fullHours = remaining > 0 ? Math.round((hours * (s.expiryTs - s.startTs)) / remaining) : hours;
       const sig = await program.methods
-        .openLock(side, usdcIn, new BN(1), hours, new BN(0), false)
+        .openLock(side, usdcIn, new BN(1), fullHours, new BN(0), false)
         .accountsPartial({
           ...common,
           claimMint: side === 0 ? acc.upMint : acc.downMint,
@@ -352,11 +358,14 @@ async function main() {
         .rpc();
       const esc = await connection.getTokenAccountBalance(escrowPda(lock));
       console.log(`lock-open (${sig}): lock ${lock.toBase58()} holds ${esc.value.uiAmountString} claims`);
-      if (size) console.log(`sizing for ${hours} h: ${Number(size.claims) / 1e6} claims (f = ${Number(size.fractionLeftPpm) / 1e6})`);
+      if (size) console.log(`sizing for ${hours} h left: ${Number(size.claims) / 1e6} claims (f = ${Number(size.fractionLeftPpm) / 1e6}), stored ${fullHours} h per period`);
     } else {
+      // a rolled lock's rent goes back to whoever paid it (the crank)
+      const existing = await getLock(connection, lock);
+      if (!existing) throw new Error("no such lock");
       const sig = await program.methods
         .closeLock(new BN(0))
-        .accountsPartial({ ...common, rentPayer: user.publicKey } as never)
+        .accountsPartial({ ...common, rentPayer: existing.rentPayer } as never)
         .rpc();
       const after = await connection.getTokenAccountBalance(ownerCollateral);
       console.log(`lock-close (${sig}): paid ${(Number(after.value.amount) - Number(before.value.amount)) / 1e6} tUSDC`);
