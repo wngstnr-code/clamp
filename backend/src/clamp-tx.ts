@@ -6,14 +6,16 @@ import {
   classPda,
   clampProgram,
   configPda,
+  escrowPda,
   getIndex,
   idlePda,
   indexPda,
+  lockPda,
   seriesAccounts,
   seriesPda,
   vaultPda,
 } from "@clamp/sdk";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { Connection, Keypair, PublicKey, SystemProgram, type AccountMeta } from "@solana/web3.js";
 
 export type ClampProgram = ReturnType<typeof clampProgram>;
@@ -116,6 +118,41 @@ export async function sweepSeries(connection: Connection, payer: Keypair, series
       idle: idlePda(),
       tokens: seriesTokens(series, classId),
       tokenProgram: TOKEN_PROGRAM_ID,
+    } as never)
+    .rpc();
+}
+
+/** `roll_lock` (spec 10.4): the caller pays the rent of a new lock and gets it back when it closes. */
+export async function rollLock(
+  connection: Connection,
+  payer: Keypair,
+  r: { owner: PublicKey; side: number; oldSeries: PublicKey; newSeries: PublicKey; classId: number; rentPayer: PublicKey },
+) {
+  const p = program(connection, payer);
+  const cfg = await p.account.config.fetch(configPda());
+  const oldLock = lockPda(r.owner, r.oldSeries, r.side);
+  const newLock = lockPda(r.owner, r.newSeries, r.side);
+  const acc = seriesAccounts(r.newSeries);
+  return p.methods
+    .rollLock()
+    .accountsPartial({
+      caller: payer.publicKey,
+      config: configPda(),
+      vault: vaultPda(),
+      idle: idlePda(),
+      treasury: cfg.treasury,
+      oldTokens: seriesTokens(r.oldSeries, r.classId),
+      newTokens: seriesTokens(r.newSeries, r.classId),
+      classConfig: classPda(r.classId),
+      oldLock,
+      oldEscrow: escrowPda(oldLock),
+      oldRentPayer: r.rentPayer,
+      newLock,
+      newClaimMint: r.side === 0 ? acc.upMint : acc.downMint,
+      newEscrow: escrowPda(newLock),
+      ownerCollateral: getAssociatedTokenAddressSync(TUSDC_MINT, r.owner),
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
     } as never)
     .rpc();
 }

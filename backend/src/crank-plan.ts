@@ -27,6 +27,8 @@ export interface SeriesState {
   seeded: boolean;
   settled: boolean;
   swept: boolean;
+  /** Settled value of one UP claim in ppm (0 until settled). */
+  upValue?: number;
 }
 
 export interface ClassState {
@@ -35,6 +37,8 @@ export interface ClassState {
   seriesCount: number[];
   /** Expiry of the latest series per kind, 0 = none. */
   currentExpiry: number[];
+  /** `current_series` per kind (base58), when known. */
+  currentSeries?: string[];
 }
 
 export type CrankAction =
@@ -113,4 +117,55 @@ export function expiryWait(series: SeriesState[], now: number, limit = EXPIRY_WA
     if (!s.settled && s.expiryTs > now && s.expiryTs - now <= limit) last = Math.max(last, s.expiryTs);
   }
   return last === 0 ? 0 : last - now + 2;
+}
+
+// ---------------------------------------------------------------- roll (M6)
+
+export interface LockState {
+  key: string;
+  owner: string;
+  series: string;
+  side: number;
+  hours: number;
+  autoRoll: boolean;
+  escrowAmount: bigint;
+  rentPayer: string;
+}
+
+export interface RollAction {
+  lock: LockState;
+  oldSeries: SeriesState;
+  newSeries: SeriesState;
+}
+
+/** Rolls per tick, at most (each is one transaction of about 100,000 CU). */
+export const MAX_ROLLS_PER_TICK = 10;
+
+/**
+ * Locks to roll now (spec 10.4, D-063): auto-roll on, the lock's series
+ * settled, claims worth more than 0, hours above 0, and the current series
+ * of the same class and kind seeded and still trading. Locks the program
+ * would refuse are left out, so the crank does not send failing transactions.
+ */
+export function planRolls(
+  input: { now: number; classes: ClassState[]; series: SeriesState[]; locks: LockState[] },
+  max = MAX_ROLLS_PER_TICK,
+): RollAction[] {
+  const byKey = new Map(input.series.map((s) => [s.key, s]));
+  const out: RollAction[] = [];
+  for (const lock of input.locks) {
+    if (out.length >= max) break;
+    if (!lock.autoRoll || lock.hours <= 0 || lock.escrowAmount <= 0n) continue;
+    const old = byKey.get(lock.series);
+    if (!old || !old.settled) continue;
+    const up = old.upValue ?? 0;
+    const value = lock.side === 0 ? up : 1_000_000 - up;
+    if ((lock.escrowAmount * BigInt(value)) / 1_000_000n <= 0n) continue;
+    const cls = input.classes.find((c) => c.classId === old.classId);
+    const currentKey = cls?.currentSeries?.[old.kind];
+    const next = currentKey ? byKey.get(currentKey) : undefined;
+    if (!next || next.key === old.key || !next.seeded || next.settled || input.now >= next.closeTs) continue;
+    out.push({ lock, oldSeries: old, newSeries: next });
+  }
+  return out;
 }

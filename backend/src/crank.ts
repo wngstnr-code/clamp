@@ -1,11 +1,12 @@
 // Steps 3 (crank) and 4 (mirror) of a tick (architecture 5). Every action is
 // permissionless; the worker only pays fees and rent.
 
-import { CLASSES, classPda, idlePda, vaultPda } from "@clamp/sdk";
+import { CLASSES, TUSDC_MINT, classPda, getLocks, idlePda, vaultPda } from "@clamp/sdk";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 
-import { createSeries, program, seedSeries, settleSeries, sweepSeries } from "./clamp-tx.js";
-import { expiryWait, planCrank, type ClassState, type SeriesState } from "./crank-plan.js";
+import { createSeries, program, rollLock, seedSeries, settleSeries, sweepSeries } from "./clamp-tx.js";
+import { expiryWait, planCrank, planRolls, type ClassState, type LockState, type SeriesState } from "./crank-plan.js";
 import type { Store } from "./store.js";
 import type { StepResult } from "./tick.js";
 
@@ -42,6 +43,7 @@ async function loadState(connection: Connection) {
     seeded: s.seeded,
     settled: s.settled,
     swept: s.swept,
+    upValue: s.upValue,
   }));
   const classes: ClassState[] = [];
   for (const spec of Object.values(CLASSES)) {
@@ -51,6 +53,7 @@ async function loadState(connection: Connection) {
       classId: spec.classId,
       seriesCount: c.seriesCount.map(Number),
       currentExpiry: c.currentExpiry.map(num),
+      currentSeries: c.currentSeries.map((k: PublicKey) => k.toBase58()),
     });
   }
   const vaultAcc = await p.account.vault.fetchNullable(vaultPda());
@@ -122,8 +125,47 @@ export async function crankStep(connection: Connection, worker: Keypair, store: 
       await run(`seed:${a.series.key}`, () => seedSeries(connection, worker, new PublicKey(a.series.key), a.series.classId));
     }
   }
+  // Rolls (M6) run on fresh state: a series settled and its successor seeded
+  // in this tick are already visible.
+  await rollStep(connection, worker, run);
+
   if (store) for (const r of results) await store.logRun(`crank:${r.action}`, r.ok, r.detail || null, r.signature ?? null);
   return results;
+}
+
+async function rollStep(
+  connection: Connection,
+  worker: Keypair,
+  run: (action: string, f: () => Promise<string>) => Promise<string | null>,
+) {
+  const now = await chainNow(connection);
+  const state = await loadState(connection);
+  const locks: LockState[] = (await getLocks(connection)).map((l) => ({
+    key: l.address.toBase58(),
+    owner: l.owner.toBase58(),
+    series: l.series.toBase58(),
+    side: l.side,
+    hours: l.hours,
+    autoRoll: l.autoRoll,
+    escrowAmount: l.escrowAmount,
+    rentPayer: l.rentPayer.toBase58(),
+  }));
+  for (const r of planRolls({ now, classes: state.classes, series: state.series, locks })) {
+    const owner = new PublicKey(r.lock.owner);
+    // the owner's tUSDC account receives the rest; without it the roll would fail
+    const ata = getAssociatedTokenAddressSync(TUSDC_MINT, owner);
+    if (!(await connection.getAccountInfo(ata))) continue;
+    await run(`roll:${r.lock.key}`, () =>
+      rollLock(connection, worker, {
+        owner,
+        side: r.lock.side,
+        oldSeries: new PublicKey(r.oldSeries.key),
+        newSeries: new PublicKey(r.newSeries.key),
+        classId: r.oldSeries.classId,
+        rentPayer: new PublicKey(r.lock.rentPayer),
+      }),
+    );
+  }
 }
 
 /** Step 4: copy every series account into the `series` table. */
