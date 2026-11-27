@@ -72,11 +72,11 @@ export async function getLock(connection: Connection, address: PublicKey): Promi
   return toLockView(address, l, amount ?? 0n);
 }
 
-/** Every open lock of `owner`, newest first, with escrow balances. */
-export async function getLocks(connection: Connection, owner: PublicKey): Promise<LockView[]> {
-  const all = await clampProgram(connection).account.lock.all([
-    { memcmp: { offset: 8, bytes: owner.toBase58() } },
-  ]);
+/** Every open lock of `owner` (of everyone without an owner), newest first, with escrow balances. */
+export async function getLocks(connection: Connection, owner?: PublicKey): Promise<LockView[]> {
+  const all = await clampProgram(connection).account.lock.all(
+    owner ? [{ memcmp: { offset: 8, bytes: owner.toBase58() } }] : [],
+  );
   const amounts = await tokenAmounts(
     connection,
     all.map((a) => a.account.escrow),
@@ -118,6 +118,40 @@ export function lockSize(hours: number, s: SeriesView, now: number): LockSize | 
   const claims = lockClaims(BigInt(hours), s.lower, s.upper, remaining, duration);
   const fractionLeftPpm = (remaining * PPM) / duration;
   return { claims, fractionLeftPpm, lateInPeriod: fractionLeftPpm < PPM / 2n };
+}
+
+export interface BillLockSize extends LockSize {
+  /**
+   * GPU-hours of a full period of this series at the bill's pace, rounded to
+   * a whole hour: the value to pass as `open_lock`'s `hours` (spec 10.1,
+   * D-063), so that `roll_lock` buys `hours * W` for the next full period.
+   */
+  hours: number;
+}
+
+/**
+ * Lock size straight from a bill: `billHours` used in a window of
+ * `windowSecs` (default 30 days), the same pace for the rest of the series
+ * (spec 10.1). The claims do not depend on when the lock opens
+ * (`hours_rest / f = billHours * duration / window`) and are not cut by
+ * rounding the hours, so a small bill still gets a lock in a daily series.
+ * Null when the series has expired.
+ */
+export function lockSizeFromBill(billHours: number, s: SeriesView, now: number, windowSecs = BILL_WINDOW_SECS): BillLockSize | null {
+  if (!(billHours >= 0) || !Number.isFinite(billHours) || windowSecs <= 0) throw new Error("invalid input");
+  const duration = s.expiryTs - s.startTs;
+  const remaining = Math.min(s.expiryTs - now, duration);
+  if (remaining <= 0) return null;
+  // milli-hours keep three decimals of the bill
+  const milli = BigInt(Math.round(billHours * 1000));
+  const claims = (milli * (s.upper - s.lower) * BigInt(duration)) / (1000n * BigInt(windowSecs));
+  const fractionLeftPpm = (BigInt(remaining) * PPM) / BigInt(duration);
+  return {
+    claims,
+    fractionLeftPpm,
+    lateInPeriod: fractionLeftPpm < PPM / 2n,
+    hours: Math.round((billHours * duration) / windowSecs),
+  };
 }
 
 export type LockValueNow =

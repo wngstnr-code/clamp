@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { describe, expect, it } from "vitest";
 
 import type { IndexView } from "../src/index-reader.js";
-import { hoursForRest, lockOutcomes, lockSize, lockValueNow, type LockView } from "../src/lock-reader.js";
+import { hoursForRest, lockOutcomes, lockSize, lockSizeFromBill, lockValueNow, type LockView } from "../src/lock-reader.js";
 import { quoteSell, type SeriesView } from "../src/market-reader.js";
 import { escrowPda, lockPda } from "../src/pda.js";
 
@@ -160,5 +160,32 @@ describe("lock PDAs", () => {
     const s = new PublicKey("9m7i36dV81UfUG9Th5GYUjnZu9Y8rYaPUQUh48kiBF3c");
     expect(lockPda(owner, s, 0).equals(lockPda(owner, s, 1))).toBe(false);
     expect(escrowPda(lockPda(owner, s, 0)).equals(escrowPda(lockPda(owner, s, 0)))).toBe(true);
+  });
+});
+
+describe("lock size from a bill", () => {
+  it("equals hours * W for a month-long series, whenever it opens", () => {
+    for (const now of [T, T + MONTH / 4, T + MONTH / 2]) {
+      expect(lockSizeFromBill(400, series(), now)?.claims).toBe(80n * U);
+    }
+    // hours of a full period, whenever the lock opens (what roll_lock reuses)
+    expect(lockSizeFromBill(400, series(), T + MONTH / 2)?.hours).toBe(400);
+  });
+  it("keeps a small bill in a short series instead of rounding it to 0", () => {
+    const daily = series({ expiryTs: T + 86_400 });
+    const late = T + 86_400 - 2_160; // 0.6 h left
+    expect(hoursForRest(120, daily, late)).toBe(0);
+    const size = lockSizeFromBill(120, daily, late)!;
+    // 120 h a month = 4 h a day: 4 * 0.20 = 0.8 claims
+    expect(size.claims).toBe(800_000n);
+    expect(size.lateInPeriod).toBe(true);
+    expect(size.hours).toBe(4);
+  });
+  it("takes the window of the bill and refuses bad input", () => {
+    // 7 days of 100 h: the same pace as 30 days of 428.57 h
+    expect(lockSizeFromBill(100, series(), T, 7 * 86_400)?.claims).toBe((100_000n * 200_000n * 2_592_000n) / (1000n * 604_800n));
+    expect(lockSizeFromBill(400, series(), T + MONTH)).toBeNull();
+    expect(() => lockSizeFromBill(-1, series(), T)).toThrow();
+    expect(() => lockSizeFromBill(1, series(), T, 0)).toThrow();
   });
 });
