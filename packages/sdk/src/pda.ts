@@ -42,3 +42,10 @@ export const faucetRecord = (wallet: PublicKey, programId = TEST_USDC_PROGRAM_ID
 export const vaultPda = (programId = CLAMP_PROGRAM_ID) => pda([Buffer.from("vault")], programId);
 export const sharesMintPda = (programId = CLAMP_PROGRAM_ID) => pda([Buffer.from("shares")], programId);
 export const idlePda = (programId = CLAMP_PROGRAM_ID) => pda([Buffer.from("idle")], programId);
+
+/** Lock PDA (spec 10): `["lock", owner, series, side]`. */
+export const lockPda = (owner: PublicKey, series: PublicKey, side: number, programId = CLAMP_PROGRAM_ID) =>
+  pda([Buffer.from("lock"), owner.toBuffer(), series.toBuffer(), Uint8Array.of(side)], programId);
+/** The escrow token account of a lock: `["escrow", lock]`, authority the lock. */
+export const escrowPda = (lock: PublicKey, programId = CLAMP_PROGRAM_ID) =>
+  pda([Buffer.from("escrow"), lock.toBuffer()], programId);
