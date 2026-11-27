@@ -109,7 +109,7 @@ fn burn_from_vault<'info>(t: &SeriesTokens<'info>, tp: Pubkey, up: u64, down: u6
 }
 
 /// Pays collateral out of the series to `to`.
-fn pay_from_series<'info>(
+pub(crate) fn pay_from_series<'info>(
     t: &SeriesTokens<'info>,
     tp: Pubkey,
     to: AccountInfo<'info>,
@@ -301,25 +301,56 @@ fn check_tradable(s: &Series, now: i64, v: u64) -> Result<()> {
     Ok(())
 }
 
-/// Buy claims of `side` with `usdc_in` (spec 8.3).
-pub fn handle_buy(ctx: Context<TradeAccounts>, side: u8, usdc_in: u64, min_out: u64) -> Result<()> {
-    let now = Clock::get()?.unix_timestamp;
-    let v = value_and_recenter(&mut ctx.accounts.tokens, now)?;
-    let a = &ctx.accounts;
-    check_tradable(&a.tokens.series, now, v)?;
-    let (pool_s, pool_o) = side_pools(&a.tokens, &a.user_claims, side)?;
-    let r = pool::buy(pool_s, pool_o, usdc_in, a.tokens.series.trade_fee_bps)
-        .map_err(ClampError::from)?;
+/// The UP or DOWN vault account and mint of `side`.
+pub(crate) fn side_tokens<'a, 'info>(
+    t: &'a SeriesTokens<'info>,
+    side: u8,
+) -> (
+    &'a InterfaceAccount<'info, TokenAccount>,
+    &'a InterfaceAccount<'info, Mint>,
+) {
+    if side == SIDE_UP {
+        (&t.up_vault, &t.up_mint)
+    } else {
+        (&t.down_vault, &t.down_mint)
+    }
+}
+
+/// Where the two parts of a trade fee go (spec 8.3).
+pub struct FeeTargets<'info> {
+    pub idle: AccountInfo<'info>,
+    pub treasury: AccountInfo<'info>,
+}
+
+/// Buys claims of `side` with `usdc_in` (spec 8.3). `payer` signs and owns
+/// `payer_collateral`; the claims go to `claims_to`, which must hold the
+/// side's mint. Returns the claims bought. Used by `buy` and `open_lock`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn execute_buy<'info>(
+    t: &mut SeriesTokens<'info>,
+    fees: FeeTargets<'info>,
+    payer: AccountInfo<'info>,
+    payer_collateral: AccountInfo<'info>,
+    claims_to: &InterfaceAccount<'info, TokenAccount>,
+    tp: Pubkey,
+    side: u8,
+    usdc_in: u64,
+    min_out: u64,
+    now: i64,
+) -> Result<u64> {
+    let v = value_and_recenter(t, now)?;
+    check_tradable(&t.series, now, v)?;
+    let (pool_s, pool_o) = side_pools(t, claims_to, side)?;
+    let r = pool::buy(pool_s, pool_o, usdc_in, t.series.trade_fee_bps).map_err(ClampError::from)?;
     require!(r.out > 0 && r.out >= min_out, ClampError::SlippageExceeded);
     let (vault_fee, protocol_fee) =
-        split_fee(r.fee, a.tokens.series.protocol_share_bps).map_err(ClampError::from)?;
-    let tp = a.token_program.key();
-    let decimals = a.tokens.collateral_mint.decimals;
+        split_fee(r.fee, t.series.protocol_share_bps).map_err(ClampError::from)?;
+    let decimals = t.collateral_mint.decimals;
 
     for (to, amount) in [
-        (a.tokens.collateral.to_account_info(), r.pairs),
-        (a.idle.to_account_info(), vault_fee),
-        (a.treasury.to_account_info(), protocol_fee),
+        (t.collateral.to_account_info(), r.pairs),
+        (fees.idle, vault_fee),
+        (fees.treasury, protocol_fee),
     ] {
         if amount == 0 {
             continue;
@@ -328,36 +359,27 @@ pub fn handle_buy(ctx: Context<TradeAccounts>, side: u8, usdc_in: u64, min_out: 
             CpiContext::new(
                 tp,
                 TransferChecked {
-                    from: a.user_collateral.to_account_info(),
-                    mint: a.tokens.collateral_mint.to_account_info(),
+                    from: payer_collateral.clone(),
+                    mint: t.collateral_mint.to_account_info(),
                     to,
-                    authority: a.user.to_account_info(),
+                    authority: payer.clone(),
                 },
             ),
             amount,
             decimals,
         )?;
     }
-    mint_pairs_to_vault(&a.tokens, tp, r.pairs)?;
-    let from = if side == SIDE_UP {
-        &a.tokens.up_vault
-    } else {
-        &a.tokens.down_vault
-    };
-    let mint = if side == SIDE_UP {
-        &a.tokens.up_mint
-    } else {
-        &a.tokens.down_mint
-    };
-    a.tokens.series.with_signer(|signer| {
+    mint_pairs_to_vault(t, tp, r.pairs)?;
+    let (from, mint) = side_tokens(t, side);
+    t.series.with_signer(|signer| {
         transfer_checked(
             CpiContext::new_with_signer(
                 tp,
                 TransferChecked {
                     from: from.to_account_info(),
                     mint: mint.to_account_info(),
-                    to: a.user_claims.to_account_info(),
-                    authority: a.tokens.series.to_account_info(),
+                    to: claims_to.to_account_info(),
+                    authority: t.series.to_account_info(),
                 },
                 signer,
             ),
@@ -366,8 +388,7 @@ pub fn handle_buy(ctx: Context<TradeAccounts>, side: u8, usdc_in: u64, min_out: 
         )
     })?;
 
-    let user = a.user.key();
-    let series = &mut ctx.accounts.tokens.series;
+    let series = &mut t.series;
     store_pools(series, side, r.new_pool_s, r.new_pool_o);
     series.pairs_outstanding = series
         .pairs_outstanding
@@ -375,7 +396,7 @@ pub fn handle_buy(ctx: Context<TradeAccounts>, side: u8, usdc_in: u64, min_out: 
         .ok_or(ClampError::MathOverflow)?;
     emit!(Trade {
         series: series.key(),
-        user,
+        user: payer.key(),
         side,
         is_buy: true,
         usdc: usdc_in,
@@ -385,58 +406,58 @@ pub fn handle_buy(ctx: Context<TradeAccounts>, side: u8, usdc_in: u64, min_out: 
         pool_down: series.pool_down,
         fair_value_ppm: v,
     });
-    Ok(())
+    Ok(r.out)
 }
 
-/// Sell `amount` claims of `side` (spec 8.4).
-pub fn handle_sell(
-    ctx: Context<TradeAccounts>,
+/// Sells `amount` claims of `side` from `claims_from` (spec 8.4) and pays
+/// the proceeds to `usdc_to`. `seller` is the authority of `claims_from`;
+/// `seller_seeds` signs for it when it is a PDA (empty for a wallet).
+/// `user` is the owner named in the event. Returns the USDC paid out.
+/// Used by `sell` and `close_lock`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn execute_sell<'info>(
+    t: &mut SeriesTokens<'info>,
+    fees: FeeTargets<'info>,
+    user: Pubkey,
+    seller: AccountInfo<'info>,
+    seller_seeds: &[&[&[u8]]],
+    claims_from: &InterfaceAccount<'info, TokenAccount>,
+    usdc_to: AccountInfo<'info>,
+    tp: Pubkey,
     side: u8,
     amount: u64,
     min_usdc_out: u64,
-) -> Result<()> {
-    let now = Clock::get()?.unix_timestamp;
-    let v = value_and_recenter(&mut ctx.accounts.tokens, now)?;
-    let a = &ctx.accounts;
-    check_tradable(&a.tokens.series, now, v)?;
-    let (pool_s, pool_o) = side_pools(&a.tokens, &a.user_claims, side)?;
-    let r = pool::sell(pool_s, pool_o, amount, a.tokens.series.trade_fee_bps)
-        .map_err(ClampError::from)?;
+    now: i64,
+) -> Result<u64> {
+    let v = value_and_recenter(t, now)?;
+    check_tradable(&t.series, now, v)?;
+    let (pool_s, pool_o) = side_pools(t, claims_from, side)?;
+    let r = pool::sell(pool_s, pool_o, amount, t.series.trade_fee_bps).map_err(ClampError::from)?;
     require!(r.out >= min_usdc_out, ClampError::SlippageExceeded);
     let (vault_fee, protocol_fee) =
-        split_fee(r.fee, a.tokens.series.protocol_share_bps).map_err(ClampError::from)?;
-    let tp = a.token_program.key();
+        split_fee(r.fee, t.series.protocol_share_bps).map_err(ClampError::from)?;
 
-    let to = if side == SIDE_UP {
-        &a.tokens.up_vault
-    } else {
-        &a.tokens.down_vault
-    };
-    let mint = if side == SIDE_UP {
-        &a.tokens.up_mint
-    } else {
-        &a.tokens.down_mint
-    };
+    let (to, mint) = side_tokens(t, side);
     transfer_checked(
         CpiContext::new(
             tp,
             TransferChecked {
-                from: a.user_claims.to_account_info(),
+                from: claims_from.to_account_info(),
                 mint: mint.to_account_info(),
                 to: to.to_account_info(),
-                authority: a.user.to_account_info(),
+                authority: seller,
             },
-        ),
+        )
+        .with_signer(seller_seeds),
         amount,
         mint.decimals,
     )?;
-    burn_from_vault(&a.tokens, tp, r.pairs, r.pairs)?;
-    pay_from_series(&a.tokens, tp, a.user_collateral.to_account_info(), r.out)?;
-    pay_from_series(&a.tokens, tp, a.idle.to_account_info(), vault_fee)?;
-    pay_from_series(&a.tokens, tp, a.treasury.to_account_info(), protocol_fee)?;
+    burn_from_vault(t, tp, r.pairs, r.pairs)?;
+    pay_from_series(t, tp, usdc_to, r.out)?;
+    pay_from_series(t, tp, fees.idle, vault_fee)?;
+    pay_from_series(t, tp, fees.treasury, protocol_fee)?;
 
-    let user = a.user.key();
-    let series = &mut ctx.accounts.tokens.series;
+    let series = &mut t.series;
     store_pools(series, side, r.new_pool_s, r.new_pool_o);
     series.pairs_outstanding = series
         .pairs_outstanding
@@ -454,6 +475,61 @@ pub fn handle_sell(
         pool_down: series.pool_down,
         fair_value_ppm: v,
     });
+    Ok(r.out)
+}
+
+/// Buy claims of `side` with `usdc_in` (spec 8.3).
+pub fn handle_buy(ctx: Context<TradeAccounts>, side: u8, usdc_in: u64, min_out: u64) -> Result<()> {
+    let now = Clock::get()?.unix_timestamp;
+    let a = ctx.accounts;
+    let tp = a.token_program.key();
+    let fees = FeeTargets {
+        idle: a.idle.to_account_info(),
+        treasury: a.treasury.to_account_info(),
+    };
+    execute_buy(
+        &mut a.tokens,
+        fees,
+        a.user.to_account_info(),
+        a.user_collateral.to_account_info(),
+        &a.user_claims,
+        tp,
+        side,
+        usdc_in,
+        min_out,
+        now,
+    )?;
+    Ok(())
+}
+
+/// Sell `amount` claims of `side` (spec 8.4).
+pub fn handle_sell(
+    ctx: Context<TradeAccounts>,
+    side: u8,
+    amount: u64,
+    min_usdc_out: u64,
+) -> Result<()> {
+    let now = Clock::get()?.unix_timestamp;
+    let a = ctx.accounts;
+    let tp = a.token_program.key();
+    let fees = FeeTargets {
+        idle: a.idle.to_account_info(),
+        treasury: a.treasury.to_account_info(),
+    };
+    execute_sell(
+        &mut a.tokens,
+        fees,
+        a.user.key(),
+        a.user.to_account_info(),
+        &[],
+        &a.user_claims,
+        a.user_collateral.to_account_info(),
+        tp,
+        side,
+        amount,
+        min_usdc_out,
+        now,
+    )?;
     Ok(())
 }
 
