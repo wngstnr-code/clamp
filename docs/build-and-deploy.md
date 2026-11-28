@@ -159,6 +159,16 @@ Note: the host build (`anchor build`) uses cargo-build-sbf 4.5.0 and gives a dif
 
 Open point: whether explorers show a "verified" badge for devnet programs is not known yet (A17). The hash match and the README command are the proof either way.
 
+Verify the deployed program from the public repo (tested on 2026-11-28, hash matched). On Wangsit's machine Docker is Colima, which only mounts `$HOME`, so clone into a folder under `$HOME` and pass `--current-dir` (without it the tool clones into `/tmp` and the build fails). Use the full 40-character commit hash, and answer `n` to the on-chain upload prompt unless the team decided to upload:
+
+```
+git clone https://github.com/wngstnr-code/clamp ~/clamp-verify && cd ~/clamp-verify && git checkout <full commit hash>
+solana-verify verify-from-repo --current-dir -u devnet \
+  --program-id wXKbfiz8yqTgGksXC5ZpN77CzXgW77ttcqHxnpqMrhC \
+  https://github.com/wngstnr-code/clamp --commit-hash <full commit hash> \
+  --library-name clamp -b solanafoundation/solana-verifiable-build:4.3.0
+```
+
 ## 3b. SDK (`packages/sdk`)
 
 Run on 2026-11-18:
