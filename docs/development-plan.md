@@ -82,7 +82,7 @@ Done when: on devnet a short series has gone from creation to settlement and red
 ## M3: Bill Lock (Friday 2026-11-27)
 
 - [x] W: `open_lock`, `close_lock`, `withdraw_lock_claims`, `set_auto_roll`, tests
-- [x] W: bill proxy routes for Vast.ai and RunPod, bill parser (hours, cost and rate per class) (the real key test is open)
+- [x] W: bill proxy routes for Vast.ai and RunPod, bill parser (hours, cost and rate per class) (real keys tested 2026-11-28: A6, A8)
 - [x] W: SDK: `getLocks`, lock sizing helper
 - [ ] AG: Bill Lock page: connect by key or invoice file, bill summary, rate next to the index, proposed size, warnings, one-click lock
 - [ ] AG: positions page: locks, outcome table, close

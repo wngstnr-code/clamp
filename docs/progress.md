@@ -109,7 +109,7 @@ The docs rely on these. Write the result here and fix the docs if the answer is 
 | M0 Setup                         | Wangsit part done 2026-11-18 (toolchain, repo, programs, keypairs, verifiable build, Supabase). AG part done 2026-11-19 in code (scaffold `web/`, wallet, D-060 proposed), wallet connect not yet checked with a real extension. |
 | M1 Index live                    | Wangsit part done 2026-11-18 (index on devnet, three reporters, quorum 2, every 15 minutes). AG part open (index pages).                                                                                                         |
 | M2 Claim market                  | Wangsit part done 2026-11-19: the first daily series went from creation to settlement, sweep and redeem with real devnet transactions, all by the crank except the user trades. AG part open (faucet and market pages).          |
-| M3 Bill Lock                     | Started 2026-11-27 22:09 WIB (hackathon window). Stages 1 (lock instructions), 2 (deploy), 3 (SDK readers and sizing) and 4 (bill proxy and parser, code only) done 2026-11-27. The real bill test waits for 2026-11-28. |
+| M3 Bill Lock | Wangsit part **done 2026-11-28**: lock instructions, deploy, SDK, bill proxy and parser, and the done-when with a real Vast.ai bill (read with a read-only key, a lock sized from it opened and closed on devnet). AG part open (issue #3: the web pages do not call `open_lock` yet). |
 | M4 Vault complete | Wangsit part done 2026-11-27 (tests and devnet check, the program code was already there from M2). AG part open (vault page). |
 | M5 Revenue Lock | Wangsit part done in code 2026-11-27 (earnings proxy and parser, tests with a fake provider). Not tried with a host account: no pilot owner yet, so the done-when uses hours typed in by the owner. AG part open (Revenue Lock page). |
 | M6 Proof, SDK, auto-roll, Nosana | Wangsit part done in code 2026-11-27: `roll_lock` with tests, roll step in the tick, `verifySettlement` (14 of 14 settled devnet series match), Nosana earnings (read live), SDK readme. Deployed to devnet 2026-11-27 (hash `24dcd469...`). AG part open (proof page, auto-roll switch, Nosana in Revenue Lock). |
@@ -259,6 +259,14 @@ Checked: `anchor build`, 89 Rust tests, 74 SDK tests, 23 backend tests, clippy, 
 Not a git repo yet. No remote yet. Decide in M0 when the repo becomes public (it must be public before the deadline).
 
 ## Session log
+
+### 2026-11-28 15:35 WIB, M3 done-when met with a real bill (Wangsit)
+
+- The Vast.ai instance was destroyed at 15:29 WIB (Instances (0), credit $4.54: the test cost about $0.46).
+- After the destroy, Vast.ai no longer lists the instance, so the bill line had no GPU and was `unassigned`, as designed. The CLI got `--gpu "RTX 4090" --gpus 1` (the user names the GPU, `assignLine`). Most real bills come from destroyed instances, so the web app needs this step too (told AG in issue #3).
+- `series lock-from-bill 1 1 1 0 --days 1 --gpu "RTX 4090" --gpus 1`: the final bill read with the read-only key gave 1.03 GPU-hours of RTX 4090, $0.426 GPU cost, rate $0.4136 per hour (index $0.3518). Sized for the RTX 4090 weekly seq 1: 1.048622 UP for 0.454818 tUSDC, 7 hours per period, `ref_rate` $0.4136 on-chain. Lock `HV9Tbpzf8ankUzsjepVx7f1HmYXrR5FSvm4sYYVzu4p2`, tx `2BWB2cWb...`.
+- `series lock-close 1 1 1 0`: paid 0.445765 tUSDC (equal to the `lockValueNow` quote), tx `2Am8e9KP...`, the lock account is gone. **M3 done-when met.**
+
 
 ### 2026-11-28 15:10 WIB, A8 closed (Wangsit)
 
