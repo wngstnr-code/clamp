@@ -24,3 +24,6 @@ scripts/reporter-netlify/.netlify/
 # Local tools
 .claude/
 next-env.d.ts
+
+# Demo video work: reference clips, storyboard, guide (local only)
+video/
