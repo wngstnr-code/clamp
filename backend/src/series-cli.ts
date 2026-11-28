@@ -13,9 +13,10 @@
 //   pnpm --filter @clamp/backend series lock-open  <class> <kind> <seq> <side 0|1> <usdc> <hours left> [keypair.json] [--auto]
 //   pnpm --filter @clamp/backend series lock-close <class> <kind> <seq> <side 0|1> <keypair.json>
 //   pnpm --filter @clamp/backend series locks [keypair.json]
-//   pnpm --filter @clamp/backend series lock-from-bill <class> <kind> <seq> <side 0|1> [--days N] [--auto] [--dry] [--key file] [--user keypair.json]
+//   pnpm --filter @clamp/backend series lock-from-bill <class> <kind> <seq> <side 0|1> [--days N] [--gpu "RTX 4090" --gpus 1] [--auto] [--dry] [--key file] [--user keypair.json]
 //     reads the user's Vast.ai bill with the read-only key in ~/.config/solana/clamp/vast-readonly.key
-//     (never printed), sizes the lock with lockSizeFromBill and opens it at the quoted cost
+//     (never printed), sizes the lock with lockSizeFromBill and opens it at the quoted cost;
+//     --gpu names the GPU of lines the provider no longer describes (destroyed instances)
 // kind: 0 daily, 1 weekly, 2 monthly. Amounts in whole tUSDC.
 
 import { readFileSync } from "node:fs";
@@ -36,8 +37,10 @@ import {
   getSeries,
   lockPda,
   lockSizeFromBill,
+  assignLine,
   parseVastBill,
   quoteCostFor,
+  summarizeBill,
   lockSize,
   lockValueNow,
   getVault,
@@ -399,7 +402,19 @@ async function main() {
 
     // 1. the real bill (the key stays on this machine and is never printed)
     const key = readFileSync(keyFile, "utf8").trim();
-    const bill = parseVastBill(await vastBill(fetch as Fetch, key, now - days * 86_400, now));
+    const read = parseVastBill(await vastBill(fetch as Fetch, key, now - days * 86_400, now));
+    // the user names the GPU of lines the provider no longer describes (assignLine, never a guess)
+    const gpuName = flag("--gpu");
+    const gpus = Number(flag("--gpus") ?? 1);
+    const bill = gpuName
+      ? summarizeBill(
+          read.provider,
+          read.from,
+          read.to,
+          read.lines.map((l) => (read.unassigned.includes(l) ? assignLine(l, gpuName, gpus) : l)),
+        )
+      : read;
+    if (gpuName) console.log(`named ${read.unassigned.length} unassigned line(s) as ${gpus}x ${gpuName} (typed by the user)`);
     const cls = bill.byClass.find((b) => b.classId === classId);
     console.log({
       bill: `${bill.lines.length} instance(s), $${(bill.totalCost / 1e6).toFixed(3)} total over ${days} day(s)`,
