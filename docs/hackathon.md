@@ -113,19 +113,24 @@ Top 3 prizes were $3,000, $2,500 and $1,500 (Solana Costa Rica, 14 May 2026). A 
 
 ## 7. Demo script (under 3 minutes)
 
-The first 30 seconds are the wow moment. Everything shown is real.
+Rewritten on 2026-11-28 after the review of the last winners (section 5): the top 3 won with a problem anyone gets in five seconds, so the story comes first and the mechanism second. Everything shown is real devnet state.
+
+**One-liner (say it in the first 10 seconds, put it on the first frame):** "Clamp locks your GPU rental bill, like a fixed-price contract, on Solana."
+
+**Words:** say lock, fixed price, protect, budget, settle, verify. Never say bet, wager, odds or prediction: UP and DOWN are the two sides of a price lock, and a pair is always worth exactly 1 USDC.
 
 | Time | Show | Say |
 |---|---|---|
-| 0:00 to 0:10 | A real GPU bill, read from the rental account | "This is a real GPU bill. Next month it can be 20% higher, and the budget cannot." |
-| 0:10 to 0:20 | The Clamp Index chart with its four sources | "This is the rental price from four real providers, recorded on Solana every 15 minutes." |
-| 0:20 to 0:30 | Click "Lock", the transaction confirms | "One click. The bill is locked for this period." |
-| 0:30 to 1:10 | The outcome table of the lock, then the same flow for a GPU owner | How UP and DOWN work, why the two sides need each other, no margin and no liquidation |
-| 1:10 to 1:50 | A series that already settled, then the proof page recomputing it | "Anyone can check the payout from the on-chain data." |
-| 1:50 to 2:20 | The vault page and the index read by a small code example | Who provides liquidity, and the index as a public good |
-| 2:20 to 2:50 | Pilot users and interview numbers, honest limits, what is next | Founder-market fit and the road after the hackathon |
+| 0:00 to 0:15 | Title frame with the one-liner, then a GPU rental price chart moving | "GPU rent moves every day. A small AI team on a fixed budget cannot plan a month of compute." |
+| 0:15 to 0:35 | Bill Lock page: connect the read-only Vast.ai key, the real bill appears (hours, cost, your rate next to the index) | "This is a real Vast.ai bill, read with a read-only key that is never stored. Our own test rental, an RTX 4090." |
+| 0:35 to 0:55 | The proposed size and the four warnings, then "Lock" and the confirmed transaction | "Clamp sizes the lock from the bill. One click: the claims sit in an escrow that only the owner controls." |
+| 0:55 to 1:25 | The outcome table (spec 10.2): if the average rises inside the band, the claims pay back the extra rent; if it falls, the bill is cheaper | "Net cost stays flat inside the band. Fully collateralized: no margin, no liquidation, the most you can lose is what you paid." |
+| 1:25 to 1:45 | Index page: four providers, reporters, history since 18 November | "The Clamp Index is the hourly rental price from four real providers, reported on Solana every 15 minutes by a quorum." |
+| 1:45 to 2:15 | A settled series whose value moved (H100 daily at UP 0.436, or RTX 4090 seq 8 at 0.437), then the proof page recomputing it from chain data | "Anyone can recompute the payout. All 14 settled series so far match the chain." |
+| 2:15 to 2:35 | Positions: the lock that rolled into the next series by itself (auto-roll), and the Revenue Lock for GPU owners in one line | "With auto-roll the protection renews every period. GPU owners lock their revenue on the other side." |
+| 2:35 to 2:55 | Honest limits, then the ask | "Devnet today. Our own reporters for now, open code, a verified program. We have not run user pilots yet: that is next." |
 
-The settled series must be real, so the first series has to start well before demo day (see the hard dates in `development-plan.md`). The bill belongs to a pilot user (with their permission) or is our own small bill from testing.
+Before recording: a wallet with tUSDC from the faucet; the read-only key at hand (blur it on screen); the rolled lock from the M6 test checked after 2026-11-28 23:45 WIB; the proof page open on a settled series with a moving value; phone width checked. If a page fails during recording, the CLI (`series lock-from-bill`, `series locks`) shows the same real flow.
 
 ## 8. Founder-market fit plan
 
