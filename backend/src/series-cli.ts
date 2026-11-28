@@ -13,6 +13,9 @@
 //   pnpm --filter @clamp/backend series lock-open  <class> <kind> <seq> <side 0|1> <usdc> <hours left> [keypair.json] [--auto]
 //   pnpm --filter @clamp/backend series lock-close <class> <kind> <seq> <side 0|1> <keypair.json>
 //   pnpm --filter @clamp/backend series locks [keypair.json]
+//   pnpm --filter @clamp/backend series lock-from-bill <class> <kind> <seq> <side 0|1> [--days N] [--auto] [--dry] [--key file] [--user keypair.json]
+//     reads the user's Vast.ai bill with the read-only key in ~/.config/solana/clamp/vast-readonly.key
+//     (never printed), sizes the lock with lockSizeFromBill and opens it at the quoted cost
 // kind: 0 daily, 1 weekly, 2 monthly. Amounts in whole tUSDC.
 
 import { readFileSync } from "node:fs";
@@ -32,6 +35,9 @@ import {
   getLocks,
   getSeries,
   lockPda,
+  lockSizeFromBill,
+  parseVastBill,
+  quoteCostFor,
   lockSize,
   lockValueNow,
   getVault,
@@ -50,6 +56,7 @@ import {
 } from "@solana/spl-token";
 import { Connection, Keypair, SystemProgram, type AccountMeta } from "@solana/web3.js";
 
+import { vastBill, type Fetch } from "./bill-proxy.js";
 import { createSeries, seedSeries, seriesTokens } from "./clamp-tx.js";
 
 const KEY_DIR = join(homedir(), ".config", "solana", "clamp");
@@ -375,7 +382,82 @@ async function main() {
     return;
   }
 
-  throw new Error("usage: series show|create|mint|merge|vault-init|deposit|withdraw|seed|buy|sell|redeem|lock-open|lock-close|locks ...");
+  if (cmd === "lock-from-bill") {
+    const flag = (name: string) => {
+      const i = process.argv.indexOf(name);
+      return i > 0 ? process.argv[i + 1] : undefined;
+    };
+    const seq = Number(c);
+    const side = Number(d);
+    const days = Number(flag("--days") ?? 30);
+    if (!Number.isInteger(days) || days < 1 || days > 31) throw new Error("--days must be 1 to 31");
+    const dry = process.argv.includes("--dry");
+    const autoRoll = process.argv.includes("--auto");
+    const keyFile = flag("--key") ?? join(KEY_DIR, "vast-readonly.key");
+    const user = load(flag("--user") ?? "test-user-1.json");
+    const now = Math.floor(Date.now() / 1000);
+
+    // 1. the real bill (the key stays on this machine and is never printed)
+    const key = readFileSync(keyFile, "utf8").trim();
+    const bill = parseVastBill(await vastBill(fetch as Fetch, key, now - days * 86_400, now));
+    const cls = bill.byClass.find((b) => b.classId === classId);
+    console.log({
+      bill: `${bill.lines.length} instance(s), $${(bill.totalCost / 1e6).toFixed(3)} total over ${days} day(s)`,
+      class: cls ? `${cls.gpuHours} GPU-hours, $${(cls.gpuCost / 1e6).toFixed(3)} GPU cost, your rate ${usd(cls.rate)}/h` : "no usage of this class",
+      unassigned: bill.unassigned.length,
+    });
+    if (!cls) return;
+
+    // 2. size and quote (spec 10.1, D-063)
+    const series = seriesPda(classId, kind, seq);
+    const s = await getSeries(connection, series);
+    const index = await getIndex(connection, classId);
+    if (!s || !index) throw new Error("series or index not found");
+    const size = lockSizeFromBill(cls.gpuHours, s, now, bill.windowSecs);
+    if (!size || size.claims <= 0n) throw new Error("the series has expired or the bill is empty");
+    const q = quoteCostFor(s, index, side, size.claims, now);
+    if (q.blocked) throw new Error(`cannot trade now: ${q.blocked}`);
+    console.log({
+      series: series.toBase58(),
+      band: `${usd(s.lower)} to ${usd(s.upper)}`,
+      index: usd(index.lastPrice),
+      claims: Number(size.claims) / 1e6,
+      hoursPerPeriod: size.hours,
+      partLeft: Number(size.fractionLeftPpm) / 1e6,
+      lateInPeriod: size.lateInPeriod,
+      cost: `${Number(q.usdcIn) / 1e6} tUSDC`,
+      autoRoll,
+    });
+    if (dry) return;
+
+    // 3. open the lock at the quoted cost, with 1% slippage on the claims
+    const program = clampProgram(connection, new KeypairWallet(user));
+    const lock = lockPda(user.publicKey, series, side);
+    const acc = seriesAccounts(series);
+    const cfg = await program.account.config.fetch(configPda());
+    const sig = await program.methods
+      .openLock(side, new BN(q.usdcIn.toString()), new BN(((size.claims * 99n) / 100n).toString()), Math.max(1, size.hours), new BN(cls.rate), autoRoll)
+      .accountsPartial({
+        owner: user.publicKey,
+        config: configPda(),
+        vault: vaultPda(),
+        idle: idlePda(),
+        treasury: cfg.treasury,
+        tokens: seriesTokens(series, classId),
+        lock,
+        claimMint: side === 0 ? acc.upMint : acc.downMint,
+        escrow: escrowPda(lock),
+        ownerCollateral: getAssociatedTokenAddressSync(TUSDC_MINT, user.publicKey),
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      } as never)
+      .rpc();
+    const esc = await connection.getTokenAccountBalance(escrowPda(lock));
+    console.log(`lock-from-bill (${sig}): lock ${lock.toBase58()} holds ${esc.value.uiAmountString} claims`);
+    return;
+  }
+
+  throw new Error("usage: series show|create|mint|merge|vault-init|deposit|withdraw|seed|buy|sell|redeem|lock-open|lock-close|locks|lock-from-bill ...");
 }
 
 main().catch((err) => {
